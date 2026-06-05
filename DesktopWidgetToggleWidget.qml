@@ -13,6 +13,20 @@ PluginComponent {
     ]
     property string activeGroupId: pluginData.activeGroupId ?? ""
     property int autoDismissDuration: pluginData.autoDismissDuration ?? 0
+    property bool hideWhenInactive: pluginData.hideWhenInactive ?? false
+
+    onHideWhenInactiveChanged: {
+        groups.forEach(g => {
+            const isGroupActive = (g.id === activeGroupId);
+            g.widgets.forEach(wId => {
+                if (!isGroupActive) {
+                    SettingsData.updateDesktopWidgetInstance(wId, {
+                        enabled: !hideWhenInactive
+                    });
+                }
+            });
+        });
+    }
 
     Timer {
         id: dismissTimer
@@ -29,16 +43,16 @@ PluginComponent {
     function toggleGroup(groupId) {
         if (activeGroupId === groupId) {
             dismissTimer.stop();
-            setGroupOverlay(groupId, false);
+            setGroupState(groupId, false);
             activeGroupId = "";
             if (pluginService)
                 pluginService.savePluginData(pluginId, "activeGroupId", "");
         } else {
             dismissTimer.stop();
             if (activeGroupId !== "") {
-                setGroupOverlay(activeGroupId, false);
+                setGroupState(activeGroupId, false);
             }
-            setGroupOverlay(groupId, true);
+            setGroupState(groupId, true);
             activeGroupId = groupId;
             if (pluginService)
                 pluginService.savePluginData(pluginId, "activeGroupId", groupId);
@@ -49,15 +63,29 @@ PluginComponent {
         }
     }
 
-    function setGroupOverlay(groupId, showOverlay) {
+    function setGroupState(groupId, isActive) {
         const group = groups.find(g => g.id === groupId);
         if (!group || !group.widgets)
             return;
 
         group.widgets.forEach(wId => {
-            SettingsData.updateDesktopWidgetInstanceConfig(wId, {
-                showOnOverlay: showOverlay
-            });
+            if (isActive) {
+                SettingsData.updateDesktopWidgetInstance(wId, {
+                    enabled: true
+                });
+                SettingsData.updateDesktopWidgetInstanceConfig(wId, {
+                    showOnOverlay: true
+                });
+            } else {
+                SettingsData.updateDesktopWidgetInstanceConfig(wId, {
+                    showOnOverlay: false
+                });
+                if (rootWidget.hideWhenInactive) {
+                    SettingsData.updateDesktopWidgetInstance(wId, {
+                        enabled: false
+                    });
+                }
+            }
         });
     }
 

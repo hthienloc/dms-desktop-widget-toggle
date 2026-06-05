@@ -263,9 +263,10 @@ PluginSettings {
             id: behaviorTitle
             text: I18n.tr("Behavior")
             icon: "settings"
-            showReset: autoDismissDuration.isDirty
+            showReset: autoDismissDuration.isDirty || hideWhenInactiveSetting.isDirty
             onResetClicked: {
                 autoDismissDuration.resetToDefault();
+                hideWhenInactiveSetting.resetToDefault();
             }
         }
 
@@ -280,6 +281,14 @@ PluginSettings {
             unit: "s"
             leftLabel: I18n.tr("Off")
             rightLabel: "15s"
+        }
+
+        ToggleSettingPlus {
+            id: hideWhenInactiveSetting
+            settingKey: "hideWhenInactive"
+            label: I18n.tr("Hide when inactive")
+            description: I18n.tr("Hide the widgets in inactive groups entirely from the desktop, showing them only when their group is activated.")
+            defaultValue: false
         }
     }
 
