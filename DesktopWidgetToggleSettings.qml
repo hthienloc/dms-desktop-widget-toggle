@@ -17,6 +17,25 @@ PluginSettings {
         ]);
     }
 
+    property int selectedGroupIndex: 0
+
+    property var tabModel: {
+        let list = [];
+        for (let i = 0; i < groups.length; i++) {
+            list.push({
+                "text": groups[i].name || "Group " + (i + 1),
+                "icon": groups[i].icon || "widgets",
+                "isAction": false
+            });
+        }
+        list.push({
+            "text": "",
+            "icon": "add",
+            "isAction": true
+        });
+        return list;
+    }
+
     function saveGroups(newGroups) {
         saveValue("groups", newGroups);
     }
@@ -43,6 +62,7 @@ PluginSettings {
             "widgets": []
         });
         saveGroups(updated);
+        selectedGroupIndex = updated.length - 1;
     }
 
     function deleteGroup(index) {
@@ -63,6 +83,10 @@ PluginSettings {
         }
         updated.splice(index, 1);
         saveGroups(updated);
+
+        if (selectedGroupIndex >= updated.length) {
+            selectedGroupIndex = updated.length - 1;
+        }
     }
 
     function toggleWidgetInGroup(groupIndex, widgetId, isChecked) {
@@ -94,134 +118,139 @@ PluginSettings {
             icon: "widgets"
         }
 
-        OutlineButton {
-            text: I18n.tr("Add Group")
-            iconName: "add"
-            onClicked: rootSettings.addGroup()
-        }
+        DankTabBar {
+            id: groupTabBar
+            width: parent.width
+            tabHeight: 48
+            model: rootSettings.tabModel
+            currentIndex: rootSettings.selectedGroupIndex
+            equalWidthTabs: false
+            showIcons: true
 
-        Separator {
-            visible: rootSettings.groups.length > 0
+            onTabClicked: index => {
+                rootSettings.selectedGroupIndex = index;
+            }
+
+            onActionTriggered: index => {
+                rootSettings.addGroup();
+            }
         }
 
         Column {
+            id: activeGroupDetails
             width: parent.width
             spacing: Theme.spacingM
-            visible: rootSettings.groups.length > 0
 
-            Repeater {
-                model: rootSettings.groups
+            readonly property var currentGroup: (rootSettings.groups && rootSettings.selectedGroupIndex >= 0 && rootSettings.selectedGroupIndex < rootSettings.groups.length) ? rootSettings.groups[rootSettings.selectedGroupIndex] : null
 
-                delegate: Column {
-                    id: groupRowContainer
-                    required property var modelData
-                    required property int index
+            visible: currentGroup !== null
 
-                    width: parent.width
-                    spacing: Theme.spacingS
+            Row {
+                width: parent.width
+                spacing: Theme.spacingM
 
-                    Row {
+                Column {
+                    width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.6
+                    spacing: Theme.spacingXS
+                    anchors.bottom: parent.bottom
+
+                    StyledText {
+                        text: I18n.tr("Group Name")
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.surfaceVariantText
+                    }
+
+                    DankTextField {
                         width: parent.width
-                        spacing: Theme.spacingM
-
-                        Column {
-                            width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.6
-                            spacing: Theme.spacingXS
-                            anchors.bottom: parent.bottom
-
-                            StyledText {
-                                text: I18n.tr("Group Name")
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.surfaceVariantText
-                            }
-
-                            DankTextField {
-                                width: parent.width
-                                height: 40
-                                text: groupRowContainer.modelData.name || ""
-                                placeholderText: I18n.tr("e.g. Work Widgets")
-                                onEditingFinished: {
-                                    rootSettings.renameGroup(groupRowContainer.index, text.trim());
-                                }
-                            }
-                        }
-
-                        Column {
-                            width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.4
-                            spacing: Theme.spacingXS
-                            anchors.bottom: parent.bottom
-
-                            StyledText {
-                                text: I18n.tr("Icon")
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.surfaceVariantText
-                            }
-
-                            DankIconPicker {
-                                width: parent.width
-                                height: 40
-                                currentIcon: groupRowContainer.modelData.icon || "widgets"
-                                onIconSelected: (iconName, type) => {
-                                    rootSettings.changeGroupIcon(groupRowContainer.index, iconName);
-                                }
-                            }
-                        }
-
-                        DankButton {
-                            id: deleteBtn
-                            text: I18n.tr("Delete")
-                            iconName: "delete"
-                            backgroundColor: Theme.error
-                            textColor: Theme.onError
-                            buttonHeight: 40
-                            enabled: rootSettings.groups.length > 1
-                            anchors.bottom: parent.bottom
-                            onClicked: {
-                                rootSettings.deleteGroup(groupRowContainer.index);
+                        height: 40
+                        text: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.name || "") : ""
+                        placeholderText: I18n.tr("e.g. Work Widgets")
+                        onEditingFinished: {
+                            if (activeGroupDetails.currentGroup) {
+                                rootSettings.renameGroup(rootSettings.selectedGroupIndex, text.trim());
                             }
                         }
                     }
+                }
 
-                    Column {
+                Column {
+                    width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.4
+                    spacing: Theme.spacingXS
+                    anchors.bottom: parent.bottom
+
+                    StyledText {
+                        text: I18n.tr("Icon")
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.surfaceVariantText
+                    }
+
+                    DankIconPicker {
                         width: parent.width
-                        spacing: Theme.spacingXS
-                        leftPadding: Theme.spacingM
-
-                        StyledText {
-                            text: I18n.tr("Select Widgets")
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.weight: Font.Medium
-                            color: Theme.surfaceText
-                        }
-
-                        StyledText {
-                            text: I18n.tr("No desktop widgets found. Go to Desktop Widgets tab to create some.")
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
-                            visible: (SettingsData.desktopWidgetInstances || []).length === 0
-                        }
-
-                        Repeater {
-                            model: SettingsData.desktopWidgetInstances || []
-
-                            delegate: DankToggle {
-                                required property var modelData
-                                width: parent.width
-                                text: modelData.name || modelData.widgetType
-                                description: "Type: " + modelData.widgetType + " | ID: " + modelData.id
-                                checked: {
-                                    const widgetList = groupRowContainer.modelData.widgets || [];
-                                    return widgetList.includes(modelData.id);
-                                }
-                                onToggled: isChecked => {
-                                    rootSettings.toggleWidgetInGroup(groupRowContainer.index, modelData.id, isChecked);
-                                }
+                        height: 40
+                        currentIcon: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.icon || "widgets") : "widgets"
+                        onIconSelected: (iconName, type) => {
+                            if (activeGroupDetails.currentGroup) {
+                                rootSettings.changeGroupIcon(rootSettings.selectedGroupIndex, iconName);
                             }
                         }
                     }
+                }
 
-                    Separator {
-                        visible: groupRowContainer.index < rootSettings.groups.length - 1
+                DankButton {
+                    id: deleteBtn
+                    text: I18n.tr("Delete")
+                    iconName: "delete"
+                    backgroundColor: Theme.error
+                    textColor: Theme.onError
+                    buttonHeight: 40
+                    enabled: rootSettings.groups.length > 1
+                    anchors.bottom: parent.bottom
+                    onClicked: {
+                        rootSettings.deleteGroup(rootSettings.selectedGroupIndex);
+                    }
+                }
+            }
+
+            Separator {}
+
+            Column {
+                width: parent.width
+                spacing: Theme.spacingXS
+                leftPadding: Theme.spacingM
+
+                StyledText {
+                    text: I18n.tr("Select Widgets")
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Medium
+                    color: Theme.surfaceText
+                }
+
+                StyledText {
+                    text: I18n.tr("No desktop widgets found. Go to Desktop Widgets tab to create some.")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.surfaceVariantText
+                    visible: (SettingsData.desktopWidgetInstances || []).length === 0
+                }
+
+                Repeater {
+                    model: SettingsData.desktopWidgetInstances || []
+
+                    delegate: DankToggle {
+                        required property var modelData
+                        width: parent.width
+                        text: modelData.name || modelData.widgetType
+                        description: "Type: " + modelData.widgetType + " | ID: " + modelData.id
+                        checked: {
+                            if (!activeGroupDetails.currentGroup)
+                                return false;
+                            const widgetList = activeGroupDetails.currentGroup.widgets || [];
+                            return widgetList.includes(modelData.id);
+                        }
+                        onToggled: isChecked => {
+                            if (activeGroupDetails.currentGroup) {
+                                rootSettings.toggleWidgetInGroup(rootSettings.selectedGroupIndex, modelData.id, isChecked);
+                            }
+                        }
                     }
                 }
             }
