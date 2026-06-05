@@ -11,20 +11,20 @@ PluginComponent {
     property var groups: pluginData.groups ?? [
         { "id": "g1", "name": "Group 1", "icon": "widgets", "widgets": [] }
     ]
-    property string activeGroupId: pluginData.activeGroupId ?? ""
+    property string conflictMode: pluginData.conflictMode ?? "single"
+    property var activeGroupIds: pluginData.activeGroupIds ?? (pluginData.activeGroupId && pluginData.activeGroupId !== "" ? [pluginData.activeGroupId] : [])
     property int autoDismissDuration: pluginData.autoDismissDuration ?? 0
     property bool hideWhenInactive: pluginData.hideWhenInactive ?? false
 
     onHideWhenInactiveChanged: {
-        groups.forEach(g => {
-            const isGroupActive = (g.id === activeGroupId);
-            g.widgets.forEach(wId => {
-                if (!isGroupActive) {
-                    SettingsData.updateDesktopWidgetInstance(wId, {
-                        enabled: !hideWhenInactive
-                    });
-                }
-            });
+        const allWidgetIds = getAllGroupWidgetIds();
+        allWidgetIds.forEach(wId => {
+            const isWidgetActive = groups.some(g => activeGroupIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
+            if (!isWidgetActive) {
+                SettingsData.updateDesktopWidgetInstance(wId, {
+                    enabled: !hideWhenInactive
+                });
+            }
         });
     }
 
@@ -34,42 +34,94 @@ PluginComponent {
         repeat: false
         running: false
         onTriggered: {
-            if (rootWidget.activeGroupId !== "") {
-                rootWidget.toggleGroup(rootWidget.activeGroupId);
+            if (rootWidget.activeGroupIds.length > 0) {
+                rootWidget.updateAllWidgetsState([]);
+                rootWidget.activeGroupIds = [];
+                if (pluginService) {
+                    pluginService.savePluginData(pluginId, "activeGroupIds", []);
+                    pluginService.savePluginData(pluginId, "activeGroupId", "");
+                }
             }
         }
     }
 
     function toggleGroup(groupId) {
-        if (activeGroupId === groupId) {
-            dismissTimer.stop();
-            setGroupState(groupId, false);
-            activeGroupId = "";
-            if (pluginService)
-                pluginService.savePluginData(pluginId, "activeGroupId", "");
+        let currentActive = Array.isArray(activeGroupIds) ? [...activeGroupIds] : [];
+        const isCurrentlyActive = currentActive.includes(groupId);
+
+        if (conflictMode === "single") {
+            if (isCurrentlyActive) {
+                currentActive = [];
+            } else {
+                currentActive = [groupId];
+            }
+        } else if (conflictMode === "overlap") {
+            if (isCurrentlyActive) {
+                currentActive = currentActive.filter(id => id !== groupId);
+            } else {
+                if (!hasOverlapWithActive(groupId, currentActive)) {
+                    currentActive.push(groupId);
+                }
+            }
+        } else {
+            if (isCurrentlyActive) {
+                currentActive = currentActive.filter(id => id !== groupId);
+            } else {
+                currentActive.push(groupId);
+            }
+        }
+
+        updateAllWidgetsState(currentActive);
+        activeGroupIds = currentActive;
+
+        if (pluginService) {
+            pluginService.savePluginData(pluginId, "activeGroupIds", currentActive);
+            pluginService.savePluginData(pluginId, "activeGroupId", currentActive.length > 0 ? currentActive[0] : "");
+        }
+
+        if (rootWidget.autoDismissDuration > 0 && currentActive.length > 0) {
+            dismissTimer.restart();
         } else {
             dismissTimer.stop();
-            if (activeGroupId !== "") {
-                setGroupState(activeGroupId, false);
-            }
-            setGroupState(groupId, true);
-            activeGroupId = groupId;
-            if (pluginService)
-                pluginService.savePluginData(pluginId, "activeGroupId", groupId);
-
-            if (rootWidget.autoDismissDuration > 0) {
-                dismissTimer.restart();
-            }
         }
     }
 
-    function setGroupState(groupId, isActive) {
-        const group = groups.find(g => g.id === groupId);
-        if (!group || !group.widgets)
-            return;
+    function groupsOverlap(g1, g2) {
+        if (!g1 || !g1.widgets || !g2 || !g2.widgets) return false;
+        return g1.widgets.some(wId => g2.widgets.includes(wId));
+    }
 
-        group.widgets.forEach(wId => {
-            if (isActive) {
+    function hasOverlapWithActive(groupId, activeIds) {
+        const targetGroup = groups.find(g => g.id === groupId);
+        if (!targetGroup) return false;
+        for (let i = 0; i < activeIds.length; i++) {
+            const activeGroup = groups.find(g => g.id === activeIds[i]);
+            if (activeGroup && groupsOverlap(targetGroup, activeGroup)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getAllGroupWidgetIds() {
+        let ids = [];
+        groups.forEach(g => {
+            if (g.widgets) {
+                g.widgets.forEach(wId => {
+                    if (!ids.includes(wId)) {
+                        ids.push(wId);
+                    }
+                });
+            }
+        });
+        return ids;
+    }
+
+    function updateAllWidgetsState(activeIds) {
+        const allWidgetIds = getAllGroupWidgetIds();
+        allWidgetIds.forEach(wId => {
+            const isWidgetActive = groups.some(g => activeIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
+            if (isWidgetActive) {
                 SettingsData.updateDesktopWidgetInstance(wId, {
                     enabled: true
                 });
@@ -110,8 +162,17 @@ PluginComponent {
                         height: parent.height
                         radius: Theme.cornerRadius
 
-                        readonly property bool isActive: rootWidget.activeGroupId === modelData.id
-                        readonly property bool isDisabled: rootWidget.activeGroupId !== "" && rootWidget.activeGroupId !== modelData.id
+                        readonly property bool isActive: rootWidget.activeGroupIds.includes(modelData.id)
+                        readonly property bool isDisabled: {
+                            if (isActive) return false;
+                            if (rootWidget.conflictMode === "single") {
+                                return rootWidget.activeGroupIds.length > 0;
+                            }
+                            if (rootWidget.conflictMode === "overlap") {
+                                return rootWidget.hasOverlapWithActive(modelData.id, rootWidget.activeGroupIds);
+                            }
+                            return false;
+                        }
 
                         color: isActive ? Theme.primary : (isDisabled ? Theme.surfaceContainerLow : Theme.surfaceContainerHigh)
                         opacity: isDisabled ? 0.4 : 1.0
@@ -172,8 +233,17 @@ PluginComponent {
                         height: width
                         radius: Theme.cornerRadius
 
-                        readonly property bool isActive: rootWidget.activeGroupId === modelData.id
-                        readonly property bool isDisabled: rootWidget.activeGroupId !== "" && rootWidget.activeGroupId !== modelData.id
+                        readonly property bool isActive: rootWidget.activeGroupIds.includes(modelData.id)
+                        readonly property bool isDisabled: {
+                            if (isActive) return false;
+                            if (rootWidget.conflictMode === "single") {
+                                return rootWidget.activeGroupIds.length > 0;
+                            }
+                            if (rootWidget.conflictMode === "overlap") {
+                                return rootWidget.hasOverlapWithActive(modelData.id, rootWidget.activeGroupIds);
+                            }
+                            return false;
+                        }
 
                         color: isActive ? Theme.primary : (isDisabled ? Theme.surfaceContainerLow : Theme.surfaceContainerHigh)
                         opacity: isDisabled ? 0.4 : 1.0

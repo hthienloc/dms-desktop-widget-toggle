@@ -70,17 +70,26 @@ PluginSettings {
             return;
         let updated = JSON.parse(JSON.stringify(groups));
         const deletedId = updated[index].id;
-        if (loadValue("activeGroupId", "") === deletedId) {
+        
+        let activeIds = loadValue("activeGroupIds", []);
+        if (activeIds.includes(deletedId)) {
             const deletedGroup = updated[index];
             if (deletedGroup && deletedGroup.widgets) {
                 deletedGroup.widgets.forEach(wId => {
-                    SettingsData.updateDesktopWidgetInstanceConfig(wId, {
-                        showOnOverlay: false
-                    });
+                    const otherActiveIds = activeIds.filter(id => id !== deletedId);
+                    const isInOtherActive = updated.some((g, idx) => idx !== index && otherActiveIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
+                    if (!isInOtherActive) {
+                        SettingsData.updateDesktopWidgetInstanceConfig(wId, {
+                            showOnOverlay: false
+                        });
+                    }
                 });
             }
-            saveValue("activeGroupId", "");
+            activeIds = activeIds.filter(id => id !== deletedId);
+            saveValue("activeGroupIds", activeIds);
+            saveValue("activeGroupId", activeIds.length > 0 ? activeIds[0] : "");
         }
+        
         updated.splice(index, 1);
         saveGroups(updated);
 
@@ -102,10 +111,14 @@ PluginSettings {
         updated[groupIndex].widgets = widgetList;
         saveGroups(updated);
 
-        const activeId = loadValue("activeGroupId", "");
-        if (activeId === updated[groupIndex].id) {
+        const activeIds = loadValue("activeGroupIds", []);
+        if (activeIds.includes(updated[groupIndex].id)) {
+            let shouldShow = isChecked;
+            if (!isChecked) {
+                shouldShow = updated.some((g, idx) => idx !== groupIndex && activeIds.includes(g.id) && g.widgets && g.widgets.includes(widgetId));
+            }
             SettingsData.updateDesktopWidgetInstanceConfig(widgetId, {
-                showOnOverlay: isChecked
+                showOnOverlay: shouldShow
             });
         }
     }
@@ -263,11 +276,25 @@ PluginSettings {
             id: behaviorTitle
             text: I18n.tr("Behavior")
             icon: "settings"
-            showReset: autoDismissDuration.isDirty || hideWhenInactiveSetting.isDirty
+            showReset: autoDismissDuration.isDirty || hideWhenInactiveSetting.isDirty || conflictModeSetting.isDirty
             onResetClicked: {
                 autoDismissDuration.resetToDefault();
                 hideWhenInactiveSetting.resetToDefault();
+                conflictModeSetting.resetToDefault();
             }
+        }
+
+        SelectionSettingPlus {
+            id: conflictModeSetting
+            settingKey: "conflictMode"
+            label: I18n.tr("Toggle Mode")
+            description: I18n.tr("Choose how widget groups can be toggled simultaneously.")
+            defaultValue: "single"
+            options: [
+                { "value": "single", "label": I18n.tr("Single Active Group") },
+                { "value": "overlap", "label": I18n.tr("Block Overlap") },
+                { "value": "all", "label": I18n.tr("Allow All") }
+            ]
         }
 
         SliderSettingPlus {
@@ -306,7 +333,7 @@ PluginSettings {
             items: [
                 I18n.tr("<b>Click</b> a group button on the status bar to show its widgets on top of all windows (overlay)."),
                 I18n.tr("<b>Click it again</b> to return the widgets to the desktop background layer."),
-                I18n.tr("Only one group can be active at a time. Other groups are disabled when a group is active.")
+                I18n.tr("Depending on the Toggle Mode setting, you can activate one or multiple groups concurrently.")
             ]
         }
     }
