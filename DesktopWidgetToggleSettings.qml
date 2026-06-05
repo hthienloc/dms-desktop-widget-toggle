@@ -258,6 +258,32 @@ PluginSettings {
     }
 
     SettingsCard {
+        id: behaviorSection
+        SectionTitle {
+            id: behaviorTitle
+            text: I18n.tr("Behavior")
+            icon: "settings"
+            showReset: autoDismissDuration.isDirty
+            onResetClicked: {
+                autoDismissDuration.resetToDefault();
+            }
+        }
+
+        SliderSettingPlus {
+            id: autoDismissDuration
+            settingKey: "autoDismissDuration"
+            label: I18n.tr("Auto-dismiss Overlay")
+            description: I18n.tr("Automatically turn off the active overlay group after this duration. Set to 0 to keep active.")
+            defaultValue: 0
+            minimum: 0
+            maximum: 120
+            unit: "s"
+            leftLabel: I18n.tr("Off")
+            rightLabel: "120s"
+        }
+    }
+
+    SettingsCard {
         SectionTitle {
             id: usageTitle
             text: I18n.tr("Usage Guide")

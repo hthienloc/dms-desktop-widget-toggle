@@ -12,14 +12,29 @@ PluginComponent {
         { "id": "g1", "name": "Group 1", "icon": "widgets", "widgets": [] }
     ]
     property string activeGroupId: pluginData.activeGroupId ?? ""
+    property int autoDismissDuration: pluginData.autoDismissDuration ?? 0
+
+    Timer {
+        id: dismissTimer
+        interval: rootWidget.autoDismissDuration * 1000
+        repeat: false
+        running: false
+        onTriggered: {
+            if (rootWidget.activeGroupId !== "") {
+                rootWidget.toggleGroup(rootWidget.activeGroupId);
+            }
+        }
+    }
 
     function toggleGroup(groupId) {
         if (activeGroupId === groupId) {
+            dismissTimer.stop();
             setGroupOverlay(groupId, false);
             activeGroupId = "";
             if (pluginService)
                 pluginService.savePluginData(pluginId, "activeGroupId", "");
         } else {
+            dismissTimer.stop();
             if (activeGroupId !== "") {
                 setGroupOverlay(activeGroupId, false);
             }
@@ -27,6 +42,10 @@ PluginComponent {
             activeGroupId = groupId;
             if (pluginService)
                 pluginService.savePluginData(pluginId, "activeGroupId", groupId);
+
+            if (rootWidget.autoDismissDuration > 0) {
+                dismissTimer.restart();
+            }
         }
     }
 
