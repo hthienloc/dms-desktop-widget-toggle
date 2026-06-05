@@ -276,10 +276,10 @@ PluginSettings {
             description: I18n.tr("Automatically turn off the active overlay group after this duration. Set to 0 to keep active.")
             defaultValue: 0
             minimum: 0
-            maximum: 120
+            maximum: 15
             unit: "s"
             leftLabel: I18n.tr("Off")
-            rightLabel: "120s"
+            rightLabel: "15s"
         }
     }
 
