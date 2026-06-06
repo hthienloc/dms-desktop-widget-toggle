@@ -57,7 +57,6 @@ PluginComponent {
     property int autoDismissDuration: pluginData.autoDismissDuration ?? 0
 
     readonly property bool isDaemonInstance: rootWidget.parent !== null
-    readonly property bool showWidgetOnBar: pluginData.showWidgetOnBar ?? true
 
     onGroupsChanged: updateAllWidgetsState(activeGroupIds)
     onActiveGroupIdsChanged: updateAllWidgetsState(activeGroupIds)
@@ -73,18 +72,16 @@ PluginComponent {
                 pluginService.pluginInstances = newInstances;
             }
 
-            if (showWidgetOnBar) {
-                // Register as widget component
-                if (pluginService.pluginWidgetComponents && !pluginService.pluginWidgetComponents[pluginId]) {
-                    const newWidgets = Object.assign({}, pluginService.pluginWidgetComponents);
-                    newWidgets[pluginId] = pluginService.pluginDaemonComponents[pluginId];
-                    pluginService.pluginWidgetComponents = newWidgets;
-                }
-                const plugins = pluginService.getLoadedPlugins ? pluginService.getLoadedPlugins() : [];
-                const pluginInfo = plugins.find((p) => p.id === pluginId);
-                if (pluginInfo)
-                    pluginInfo.type = "widget";
+            // Register as widget component
+            if (pluginService.pluginWidgetComponents && !pluginService.pluginWidgetComponents[pluginId]) {
+                const newWidgets = Object.assign({}, pluginService.pluginWidgetComponents);
+                newWidgets[pluginId] = pluginService.pluginDaemonComponents[pluginId];
+                pluginService.pluginWidgetComponents = newWidgets;
             }
+            const plugins = pluginService.getLoadedPlugins ? pluginService.getLoadedPlugins() : [];
+            const pluginInfo = plugins.find((p) => p.id === pluginId);
+            if (pluginInfo)
+                pluginInfo.type = "widget";
         }
     }
 

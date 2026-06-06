@@ -569,11 +569,10 @@ PluginSettings {
             id: behaviorTitle
             text: I18n.tr("Behavior")
             icon: "settings"
-            showReset: autoDismissDuration.isDirty || conflictModeSetting.isDirty || showWidgetOnBarSetting.isDirty
+            showReset: autoDismissDuration.isDirty || conflictModeSetting.isDirty
             onResetClicked: {
                 autoDismissDuration.resetToDefault();
                 conflictModeSetting.resetToDefault();
-                showWidgetOnBarSetting.resetToDefault();
             }
         }
 
@@ -620,16 +619,6 @@ PluginSettings {
             unit: "s"
             leftLabel: I18n.tr("Off")
             rightLabel: "15s"
-        }
-
-        SettingsDivider {}
-
-        ToggleSettingPlus {
-            id: showWidgetOnBarSetting
-            settingKey: "showWidgetOnBar"
-            label: I18n.tr("Show Widget on Status Bar")
-            description: I18n.tr("Show the group toggle buttons on the status bar. Disable to use IPC control only.")
-            defaultValue: true
         }
     }
 
