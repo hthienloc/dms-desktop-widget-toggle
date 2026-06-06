@@ -158,18 +158,80 @@ PluginSettings {
 
             visible: currentGroup !== null
 
-            DankTabBar {
-                id: subTabBar
-                width: parent.width
-                tabHeight: 40
-                spacing: Theme.spacingM
-                model: rootSettings.subTabModel
-                currentIndex: rootSettings.selectedGroupSubTabIndex
-                equalWidthTabs: true
-                showIcons: true
+            Rectangle {
+                width: parent.width; height: 32; radius: 16; color: Theme.withAlpha(Theme.surfaceText, 0.05)
+                border.color: Theme.withAlpha(Theme.outline, 0.1); border.width: 1
 
-                onTabClicked: index => {
-                    rootSettings.selectedGroupSubTabIndex = index;
+                Row {
+                    anchors.fill: parent; anchors.margins: 2
+
+                    MouseArea {
+                        id: tabGroupBtn
+                        width: parent.width / 2; height: parent.height
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: rootSettings.selectedGroupSubTabIndex = 0
+
+                        Rectangle {
+                            anchors.fill: parent; radius: 14
+                            color: rootSettings.selectedGroupSubTabIndex === 0 ? Theme.primary : "transparent"
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingXS
+
+                                DankIcon {
+                                    name: "settings"
+                                    size: 14
+                                    color: rootSettings.selectedGroupSubTabIndex === 0 ? Theme.onPrimary : Theme.surfaceText
+                                    opacity: tabGroupBtn.containsMouse ? 0.9 : 0.6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                StyledText {
+                                    text: I18n.tr("Group")
+                                    font.bold: true
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: rootSettings.selectedGroupSubTabIndex === 0 ? Theme.onPrimary : Theme.surfaceText
+                                    opacity: tabGroupBtn.containsMouse ? 0.9 : 0.6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: tabWidgetsBtn
+                        width: parent.width / 2; height: parent.height
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: rootSettings.selectedGroupSubTabIndex = 1
+
+                        Rectangle {
+                            anchors.fill: parent; radius: 14
+                            color: rootSettings.selectedGroupSubTabIndex === 1 ? Theme.primary : "transparent"
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingXS
+
+                                DankIcon {
+                                    name: "widgets"
+                                    size: 14
+                                    color: rootSettings.selectedGroupSubTabIndex === 1 ? Theme.onPrimary : Theme.surfaceText
+                                    opacity: tabWidgetsBtn.containsMouse ? 0.9 : 0.6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                StyledText {
+                                    text: I18n.tr("Widgets")
+                                    font.bold: true
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: rootSettings.selectedGroupSubTabIndex === 1 ? Theme.onPrimary : Theme.surfaceText
+                                    opacity: tabWidgetsBtn.containsMouse ? 0.9 : 0.6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -184,7 +246,7 @@ PluginSettings {
                     spacing: Theme.spacingM
 
                     Column {
-                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.6
+                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.55
                         spacing: Theme.spacingXS
                         anchors.bottom: parent.bottom
 
@@ -208,23 +270,54 @@ PluginSettings {
                     }
 
                     Column {
-                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.4
+                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.45
                         spacing: Theme.spacingXS
                         anchors.bottom: parent.bottom
 
-                        StyledText {
-                            text: I18n.tr("Icon")
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
-                        }
-
-                        DankIconPicker {
+                        Row {
                             width: parent.width
-                            height: 40
-                            currentIcon: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.icon || "widgets") : "widgets"
-                            onIconSelected: (iconName, type) => {
-                                if (activeGroupDetails.currentGroup) {
-                                    rootSettings.changeGroupIcon(rootSettings.selectedGroupIndex, iconName);
+                            spacing: Theme.spacingS
+
+                            Column {
+                                width: parent.width - 48
+                                spacing: Theme.spacingXS
+
+                                StyledText {
+                                    text: I18n.tr("Icon")
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.surfaceVariantText
+                                }
+
+                                DankIconPicker {
+                                    width: parent.width
+                                    height: 40
+                                    enabled: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.showIcon !== false) : true
+                                    currentIcon: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.icon || "widgets") : "widgets"
+                                    onIconSelected: (iconName, type) => {
+                                        if (activeGroupDetails.currentGroup) {
+                                            rootSettings.changeGroupIcon(rootSettings.selectedGroupIndex, iconName);
+                                        }
+                                    }
+                                }
+                            }
+
+                            Column {
+                                width: 40
+                                spacing: Theme.spacingXS
+                                anchors.bottom: parent.bottom
+
+                                DankButton {
+                                    width: 40
+                                    height: 40
+                                    iconName: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? "visibility" : "visibility_off"
+                                    backgroundColor: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? Theme.primaryContainer : Theme.surfaceContainerHigh
+                                    textColor: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? Theme.primary : Theme.surfaceVariantText
+                                    onClicked: {
+                                        if (activeGroupDetails.currentGroup) {
+                                            const show = activeGroupDetails.currentGroup.showIcon !== false;
+                                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "showIcon", !show);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -253,7 +346,7 @@ PluginSettings {
                     leftPadding: Theme.spacingM
 
                     StyledText {
-                        text: I18n.tr("Global Behavior")
+                        text: I18n.tr("Group Behavior")
                         font.pixelSize: Theme.fontSizeSmall
                         font.weight: Font.Medium
                         color: Theme.surfaceText
@@ -305,6 +398,18 @@ PluginSettings {
                         onToggled: isChecked => {
                             if (activeGroupDetails.currentGroup) {
                                 rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleClickThrough", isChecked);
+                            }
+                        }
+                    }
+
+                    DankToggle {
+                        width: parent.width
+                        text: I18n.tr("Hide when inactive")
+                        description: I18n.tr("Hide the widgets in this group entirely when the group is inactive.")
+                        checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.hideWhenInactive : false
+                        onToggled: isChecked => {
+                            if (activeGroupDetails.currentGroup) {
+                                rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "hideWhenInactive", isChecked);
                             }
                         }
                     }
@@ -375,19 +480,23 @@ PluginSettings {
                                 visible: widgetItem.isSelected && activeGroupDetails.currentGroup.overrideIndividual
                                 spacing: Theme.spacingXS
 
+                                readonly property var activeModel: [
+                                    { key: "toggleOverlay", label: I18n.tr("Overlay") },
+                                    { key: "toggleOverview", label: I18n.tr("Overview"), visible: CompositorService.isNiri },
+                                    { key: "toggleOverviewOnly", label: I18n.tr("Overview Only"), visible: CompositorService.isNiri },
+                                    { key: "toggleClickThrough", label: I18n.tr("Click through") },
+                                    { key: "hideWhenInactive", label: I18n.tr("Hide inactive") }
+                                ].filter(m => m.visible !== false)
+
                                 property var overrides: (activeGroupDetails.currentGroup.widgetOverrides && activeGroupDetails.currentGroup.widgetOverrides[widgetItem.modelData.id]) || {}
 
                                 Repeater {
-                                    model: [
-                                        { key: "toggleOverlay", label: I18n.tr("Overlay") },
-                                        { key: "toggleOverview", label: I18n.tr("Overview"), visible: CompositorService.isNiri },
-                                        { key: "toggleClickThrough", label: I18n.tr("Click through") }
-                                    ].filter(m => m.visible !== false)
+                                    model: behaviorBar.activeModel
 
                                     delegate: StyledRect {
                                         required property var modelData
                                         visible: modelData.visible !== false
-                                        width: (parent.width - (parent.spacing * (CompositorService.isNiri ? 2 : 1))) / (CompositorService.isNiri ? 3 : 2)
+                                        width: (behaviorBar.width - (behaviorBar.spacing * (behaviorBar.activeModel.length - 1))) / behaviorBar.activeModel.length
                                         height: 32
                                         radius: 4
                                         
@@ -403,7 +512,7 @@ PluginSettings {
                                         StyledText {
                                             anchors.centerIn: parent
                                             text: modelData.label
-                                            font.pixelSize: 11
+                                            font.pixelSize: 10
                                             color: parent.active ? Theme.primary : Theme.surfaceVariantText
                                         }
 
@@ -460,12 +569,11 @@ PluginSettings {
             id: behaviorTitle
             text: I18n.tr("Behavior")
             icon: "settings"
-            showReset: autoDismissDuration.isDirty || hideWhenInactiveSetting.isDirty || conflictModeSetting.isDirty || showIconsSetting.isDirty
+            showReset: autoDismissDuration.isDirty || conflictModeSetting.isDirty || showWidgetOnBarSetting.isDirty
             onResetClicked: {
                 autoDismissDuration.resetToDefault();
-                hideWhenInactiveSetting.resetToDefault();
                 conflictModeSetting.resetToDefault();
-                showIconsSetting.resetToDefault();
+                showWidgetOnBarSetting.resetToDefault();
             }
         }
 
@@ -517,20 +625,10 @@ PluginSettings {
         SettingsDivider {}
 
         ToggleSettingPlus {
-            id: hideWhenInactiveSetting
-            settingKey: "hideWhenInactive"
-            label: I18n.tr("Hide when inactive")
-            description: I18n.tr("Hide the widgets in inactive groups entirely from the desktop, showing them only when their group is activated.")
-            defaultValue: false
-        }
-
-        SettingsDivider {}
-
-        ToggleSettingPlus {
-            id: showIconsSetting
-            settingKey: "showIcons"
-            label: I18n.tr("Show Icons")
-            description: I18n.tr("Show group icons on the status bar widget.")
+            id: showWidgetOnBarSetting
+            settingKey: "showWidgetOnBar"
+            label: I18n.tr("Show Widget on Status Bar")
+            description: I18n.tr("Show the group toggle buttons on the status bar. Disable to use IPC control only.")
             defaultValue: true
         }
     }

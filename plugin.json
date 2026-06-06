@@ -5,7 +5,7 @@
   "version": "1.1.0",
   "author": "Loc Huynh",
   "icon": "widgets",
-  "type": "widget",
+  "type": "daemon",
   "capabilities": [
     "dankbar-widget",
     "ipc"

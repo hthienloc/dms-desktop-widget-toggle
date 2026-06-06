@@ -1,6 +1,5 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import qs.Common
 import qs.Widgets
@@ -56,26 +55,47 @@ PluginComponent {
     property string conflictMode: pluginData.conflictMode ?? "single"
     property var activeGroupIds: pluginData.activeGroupIds ?? (pluginData.activeGroupId && pluginData.activeGroupId !== "" ? [pluginData.activeGroupId] : [])
     property int autoDismissDuration: pluginData.autoDismissDuration ?? 0
-    property bool hideWhenInactive: pluginData.hideWhenInactive ?? false
-    property bool showIcons: pluginData.showIcons ?? true
 
-    onHideWhenInactiveChanged: {
-        const allWidgetIds = getAllGroupWidgetIds();
-        allWidgetIds.forEach(wId => {
-            const isWidgetActive = groups.some(g => activeGroupIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
-            if (!isWidgetActive) {
-                SettingsData.updateDesktopWidgetInstance(wId, {
-                    enabled: !hideWhenInactive
-                });
-            }
-        });
-    }
+    readonly property bool isDaemonInstance: rootWidget.parent !== null
+    readonly property bool showWidgetOnBar: pluginData.showWidgetOnBar ?? true
 
     onGroupsChanged: updateAllWidgetsState(activeGroupIds)
     onActiveGroupIdsChanged: updateAllWidgetsState(activeGroupIds)
 
     Component.onCompleted: {
         updateAllWidgetsState(activeGroupIds)
+
+        if (isDaemonInstance && pluginService && pluginId) {
+            // Register instance for IPC
+            if (!pluginService.pluginInstances[pluginId]) {
+                const newInstances = Object.assign({}, pluginService.pluginInstances);
+                newInstances[pluginId] = rootWidget;
+                pluginService.pluginInstances = newInstances;
+            }
+
+            if (showWidgetOnBar) {
+                // Register as widget component
+                if (pluginService.pluginWidgetComponents && !pluginService.pluginWidgetComponents[pluginId]) {
+                    const newWidgets = Object.assign({}, pluginService.pluginWidgetComponents);
+                    newWidgets[pluginId] = pluginService.pluginDaemonComponents[pluginId];
+                    pluginService.pluginWidgetComponents = newWidgets;
+                }
+                const plugins = pluginService.getLoadedPlugins ? pluginService.getLoadedPlugins() : [];
+                const pluginInfo = plugins.find((p) => p.id === pluginId);
+                if (pluginInfo)
+                    pluginInfo.type = "widget";
+            }
+        }
+    }
+
+    Component.onDestruction: {
+        if (isDaemonInstance && pluginService && pluginId) {
+            if (pluginService.pluginInstances[pluginId] === rootWidget) {
+                const newInstances = Object.assign({}, pluginService.pluginInstances);
+                delete newInstances[pluginId];
+                pluginService.pluginInstances = newInstances;
+            }
+        }
     }
 
     Timer {
@@ -211,9 +231,24 @@ PluginComponent {
                     showOnOverviewOnly: false,
                     clickThrough: false
                 });
-                if (rootWidget.hideWhenInactive) {
+
+                const groupsWithWidget = rootWidget.groups.filter(g => g.widgets && g.widgets.includes(wId));
+                const shouldHide = groupsWithWidget.some(g => {
+                    const hasOverride = !!g.overrideIndividual && g.widgetOverrides && g.widgetOverrides[wId];
+                    if (hasOverride) {
+                        return !!g.widgetOverrides[wId].hideWhenInactive;
+                    } else {
+                        return !!g.hideWhenInactive;
+                    }
+                });
+
+                if (shouldHide) {
                     SettingsData.updateDesktopWidgetInstance(wId, {
                         enabled: false
+                    });
+                } else {
+                    SettingsData.updateDesktopWidgetInstance(wId, {
+                        enabled: true
                     });
                 }
             }
@@ -267,7 +302,7 @@ PluginComponent {
                                 color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
                                 anchors.verticalCenter: parent.verticalCenter
                                 Behavior on color { enabled: false }
-                                visible: rootWidget.showIcons && name !== ""
+                                visible: modelData.showIcon !== false && name !== ""
                             }
 
                             StyledText {
@@ -335,7 +370,7 @@ PluginComponent {
                             color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
                             anchors.centerIn: parent
                             Behavior on color { enabled: false }
-                            visible: rootWidget.showIcons
+                            visible: modelData.showIcon !== false
                         }
 
                         StyledText {
@@ -344,7 +379,7 @@ PluginComponent {
                             font.weight: Font.Bold
                             color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
                             anchors.centerIn: parent
-                            visible: !rootWidget.showIcons
+                            visible: modelData.showIcon === false
                         }
 
                         MouseArea {
