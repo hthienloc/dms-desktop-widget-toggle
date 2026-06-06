@@ -115,6 +115,17 @@ PluginSettings {
         saveGroups(updated);
     }
 
+    function selectAllWidgetsInGroup(groupIndex, selectAll) {
+        let updated = JSON.parse(JSON.stringify(groups));
+        if (selectAll) {
+            let allIds = (SettingsData.desktopWidgetInstances || []).map(w => w.id);
+            updated[groupIndex].widgets = allIds;
+        } else {
+            updated[groupIndex].widgets = [];
+        }
+        saveGroups(updated);
+    }
+
     function updateWidgetOverride(groupIndex, widgetId, key, value) {
         let updated = JSON.parse(JSON.stringify(groups));
         if (!updated[groupIndex].widgetOverrides) updated[groupIndex].widgetOverrides = {};
@@ -431,11 +442,45 @@ PluginSettings {
                     spacing: Theme.spacingS
                     leftPadding: Theme.spacingM
 
-                    StyledText {
-                        text: I18n.tr("Select Widgets")
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.weight: Font.Medium
-                        color: Theme.surfaceText
+                    Item {
+                        width: parent.width - Theme.spacingM
+                        height: Math.max(selectWidgetsTitle.implicitHeight, selectAllRow.implicitHeight)
+
+                        StyledText {
+                            id: selectWidgetsTitle
+                            text: I18n.tr("Select Widgets")
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.weight: Font.Medium
+                            color: Theme.surfaceText
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Row {
+                            id: selectAllRow
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: Theme.spacingS
+                            visible: (SettingsData.desktopWidgetInstances || []).length > 0
+
+                            DankButton {
+                                text: I18n.tr("Select All")
+                                buttonHeight: 32
+                                horizontalPadding: Theme.spacingM
+                                backgroundColor: Theme.primaryContainer
+                                textColor: Theme.primary
+                                onClicked: rootSettings.selectAllWidgetsInGroup(rootSettings.selectedGroupIndex, true)
+                            }
+
+                            DankButton {
+                                text: I18n.tr("Deselect All")
+                                buttonHeight: 32
+                                horizontalPadding: Theme.spacingM
+                                backgroundColor: Theme.surfaceContainerHigh
+                                textColor: Theme.surfaceText
+                                onClicked: rootSettings.selectAllWidgetsInGroup(rootSettings.selectedGroupIndex, false)
+                            }
+                        }
                     }
 
                     Repeater {
