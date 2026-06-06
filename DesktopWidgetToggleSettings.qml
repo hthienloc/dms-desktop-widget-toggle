@@ -364,11 +364,12 @@ PluginSettings {
             id: behaviorTitle
             text: I18n.tr("Behavior")
             icon: "settings"
-            showReset: autoDismissDuration.isDirty || hideWhenInactiveSetting.isDirty || conflictModeSetting.isDirty
+            showReset: autoDismissDuration.isDirty || hideWhenInactiveSetting.isDirty || conflictModeSetting.isDirty || showIconsSetting.isDirty
             onResetClicked: {
                 autoDismissDuration.resetToDefault();
                 hideWhenInactiveSetting.resetToDefault();
                 conflictModeSetting.resetToDefault();
+                showIconsSetting.resetToDefault();
             }
         }
 
@@ -404,6 +405,14 @@ PluginSettings {
             label: I18n.tr("Hide when inactive")
             description: I18n.tr("Hide the widgets in inactive groups entirely from the desktop, showing them only when their group is activated.")
             defaultValue: false
+        }
+
+        ToggleSettingPlus {
+            id: showIconsSetting
+            settingKey: "showIcons"
+            label: I18n.tr("Show Icons")
+            description: I18n.tr("Show group icons on the status bar widget.")
+            defaultValue: true
         }
     }
 

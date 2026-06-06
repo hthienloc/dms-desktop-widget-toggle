@@ -15,6 +15,7 @@ PluginComponent {
     property var activeGroupIds: pluginData.activeGroupIds ?? (pluginData.activeGroupId && pluginData.activeGroupId !== "" ? [pluginData.activeGroupId] : [])
     property int autoDismissDuration: pluginData.autoDismissDuration ?? 0
     property bool hideWhenInactive: pluginData.hideWhenInactive ?? false
+    property bool showIcons: pluginData.showIcons ?? true
 
     onHideWhenInactiveChanged: {
         const allWidgetIds = getAllGroupWidgetIds();
@@ -206,6 +207,7 @@ PluginComponent {
                                 color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
                                 anchors.verticalCenter: parent.verticalCenter
                                 Behavior on color { enabled: false }
+                                visible: rootWidget.showIcons && name !== ""
                             }
 
                             StyledText {
@@ -273,6 +275,16 @@ PluginComponent {
                             color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
                             anchors.centerIn: parent
                             Behavior on color { enabled: false }
+                            visible: rootWidget.showIcons
+                        }
+
+                        StyledText {
+                            text: (modelData.name || "").substring(0, 2)
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.weight: Font.Bold
+                            color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
+                            anchors.centerIn: parent
+                            visible: !rootWidget.showIcons
                         }
 
                         MouseArea {
