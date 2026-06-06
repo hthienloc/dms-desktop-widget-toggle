@@ -12,4 +12,6 @@ ToggleSettingPlus 1.0 ToggleSettingPlus.qml
 UsageGuide 1.0 UsageGuide.qml
 CopyBox 1.0 CopyBox.qml
 SettingsDivider 1.0 SettingsDivider.qml
+DankIconPickerPlus 1.0 DankIconPickerPlus.qml
+
 

@@ -284,7 +284,7 @@ PluginSettings {
                             width: parent.width
                             spacing: Theme.spacingS
 
-                            DankIconPicker {
+                            DankIconPickerPlus {
                                 width: 40
                                 height: 40
                                 showText: false
