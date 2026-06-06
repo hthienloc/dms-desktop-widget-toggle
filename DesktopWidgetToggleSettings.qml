@@ -500,7 +500,7 @@ PluginSettings {
                             DankToggle {
                                 width: parent.width
                                 text: modelData.name || modelData.widgetType
-                                description: "Type: " + modelData.widgetType
+                                description: "ID: " + modelData.id
                                 checked: widgetItem.isSelected
                                 onToggled: isChecked => {
                                     rootSettings.toggleWidgetInGroup(rootSettings.selectedGroupIndex, modelData.id, isChecked);
