@@ -1,14 +1,57 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Common
+import qs.Services
 import qs.Widgets
 import qs.Modules.Plugins
 
 PluginComponent {
     id: rootWidget
+
+    IpcHandler {
+        target: "desktopWidgetToggle"
+
+        function toggleGroup(groupId: string): string {
+            if (!groupId) return "ERROR: No group ID provided";
+            const group = rootWidget.groups.find(g => g.id === groupId || (g.name && g.name.toLowerCase() === groupId.toLowerCase()));
+            if (!group) return `ERROR: Group not found: ${groupId}`;
+            rootWidget.toggleGroup(group.id);
+            const isActive = rootWidget.activeGroupIds.includes(group.id);
+            return isActive ? `GROUP_ACTIVATED: ${group.name}` : `GROUP_DEACTIVATED: ${group.name}`;
+        }
+
+        function toggle(groupId: string): string {
+            return toggleGroup(groupId);
+        }
+
+        function activate(groupId: string): string {
+            if (!groupId) return "ERROR: No group ID provided";
+            const group = rootWidget.groups.find(g => g.id === groupId || (g.name && g.name.toLowerCase() === groupId.toLowerCase()));
+            if (!group) return `ERROR: Group not found: ${groupId}`;
+            if (!rootWidget.activeGroupIds.includes(group.id)) {
+                rootWidget.toggleGroup(group.id);
+            }
+            return `GROUP_ACTIVATED: ${group.name}`;
+        }
+
+        function deactivate(groupId: string): string {
+            if (!groupId) return "ERROR: No group ID provided";
+            const group = rootWidget.groups.find(g => g.id === groupId || (g.name && g.name.toLowerCase() === groupId.toLowerCase()));
+            if (!group) return `ERROR: Group not found: ${groupId}`;
+            if (rootWidget.activeGroupIds.includes(group.id)) {
+                rootWidget.toggleGroup(group.id);
+            }
+            return `GROUP_DEACTIVATED: ${group.name}`;
+        }
+
+        function list(): string {
+            return rootWidget.groups.map(g => `${g.id} : ${g.name} (${rootWidget.activeGroupIds.includes(g.id) ? "active" : "inactive"})`).join("\n");
+        }
+    }
 
     property var groups: pluginData.groups ?? [
         { "id": "g1", "name": "Group 1", "icon": "widgets", "widgets": [] }
@@ -130,15 +173,33 @@ PluginComponent {
     function updateAllWidgetsState(activeIds) {
         const allWidgetIds = getAllGroupWidgetIds();
         allWidgetIds.forEach(wId => {
-            const activeGroupsWithWidget = groups.filter(g => activeIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
+            const activeGroupsWithWidget = rootWidget.groups.filter(g => activeIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
             if (activeGroupsWithWidget.length > 0) {
                 SettingsData.updateDesktopWidgetInstance(wId, {
                     enabled: true
                 });
-                const showOnOverlayVal = activeGroupsWithWidget.some(g => g.toggleOverlay !== false);
-                const showOnOverviewVal = activeGroupsWithWidget.some(g => !!g.toggleOverview);
-                const showOnOverviewOnlyVal = activeGroupsWithWidget.some(g => !!g.toggleOverviewOnly);
-                const clickThroughVal = activeGroupsWithWidget.some(g => !!g.toggleClickThrough);
+
+                let showOnOverlayVal = false;
+                let showOnOverviewVal = false;
+                let showOnOverviewOnlyVal = false;
+                let clickThroughVal = false;
+
+                activeGroupsWithWidget.forEach(g => {
+                    const hasOverride = !!g.overrideIndividual && g.widgetOverrides && g.widgetOverrides[wId];
+                    const overrides = hasOverride ? g.widgetOverrides[wId] : {};
+
+                    if (hasOverride) {
+                        if (overrides.toggleOverlay !== false) showOnOverlayVal = true;
+                        if (!!overrides.toggleOverview) showOnOverviewVal = true;
+                        if (!!overrides.toggleOverviewOnly) showOnOverviewOnlyVal = true;
+                        if (!!overrides.toggleClickThrough) clickThroughVal = true;
+                    } else {
+                        if (g.toggleOverlay !== false) showOnOverlayVal = true;
+                        if (!!g.toggleOverview) showOnOverviewVal = true;
+                        if (!!g.toggleOverviewOnly) showOnOverviewOnlyVal = true;
+                        if (!!g.toggleClickThrough) clickThroughVal = true;
+                    }
+                });
 
                 SettingsData.updateDesktopWidgetInstanceConfig(wId, {
                     showOnOverlay: showOnOverlayVal,
@@ -300,47 +361,6 @@ PluginComponent {
                     }
                 }
             }
-        }
-    }
-
-    IpcHandler {
-        target: "desktopWidgetToggle"
-
-        function toggleGroup(groupId: string): string {
-            if (!groupId) return "ERROR: No group ID provided";
-            const group = groups.find(g => g.id === groupId || g.name.toLowerCase() === groupId.toLowerCase());
-            if (!group) return `ERROR: Group not found: ${groupId}`;
-            rootWidget.toggleGroup(group.id);
-            const isActive = rootWidget.activeGroupIds.includes(group.id);
-            return isActive ? `GROUP_ACTIVATED: ${group.name}` : `GROUP_DEACTIVATED: ${group.name}`;
-        }
-
-        function toggle(groupId: string): string {
-            return toggleGroup(groupId);
-        }
-
-        function activate(groupId: string): string {
-            if (!groupId) return "ERROR: No group ID provided";
-            const group = groups.find(g => g.id === groupId || g.name.toLowerCase() === groupId.toLowerCase());
-            if (!group) return `ERROR: Group not found: ${groupId}`;
-            if (!rootWidget.activeGroupIds.includes(group.id)) {
-                rootWidget.toggleGroup(group.id);
-            }
-            return `GROUP_ACTIVATED: ${group.name}`;
-        }
-
-        function deactivate(groupId: string): string {
-            if (!groupId) return "ERROR: No group ID provided";
-            const group = groups.find(g => g.id === groupId || g.name.toLowerCase() === groupId.toLowerCase());
-            if (!group) return `ERROR: Group not found: ${groupId}`;
-            if (rootWidget.activeGroupIds.includes(group.id)) {
-                rootWidget.toggleGroup(group.id);
-            }
-            return `GROUP_DEACTIVATED: ${group.name}`;
-        }
-
-        function list(): string {
-            return groups.map(g => `${g.id} : ${g.name} (${rootWidget.activeGroupIds.includes(g.id) ? "active" : "inactive"})`).join("\n");
         }
     }
 }

@@ -2,9 +2,11 @@ pragma ComponentBehavior: Bound
 
 import "./dms-common"
 import QtQuick
+import QtQuick.Controls
 import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
+import qs.Services
 
 PluginSettings {
     id: rootSettings
@@ -18,6 +20,7 @@ PluginSettings {
     }
 
     property int selectedGroupIndex: 0
+    property int selectedGroupSubTabIndex: 0
 
     property var tabModel: {
         let list = [];
@@ -35,6 +38,11 @@ PluginSettings {
         });
         return list;
     }
+
+    property var subTabModel: [
+        { "text": I18n.tr("Group"), "icon": "settings", "isAction": false },
+        { "text": I18n.tr("Widgets"), "icon": "widgets", "isAction": false }
+    ]
 
     function saveGroups(newGroups) {
         saveValue("groups", newGroups);
@@ -65,7 +73,9 @@ PluginSettings {
             "id": newId,
             "name": "New Group",
             "icon": "widgets",
-            "widgets": []
+            "widgets": [],
+            "overrideIndividual": false,
+            "widgetOverrides": {}
         });
         saveGroups(updated);
         selectedGroupIndex = updated.length - 1;
@@ -79,26 +89,6 @@ PluginSettings {
         
         let activeIds = loadValue("activeGroupIds", []);
         if (activeIds.includes(deletedId)) {
-            const deletedGroup = updated[index];
-            if (deletedGroup && deletedGroup.widgets) {
-                deletedGroup.widgets.forEach(wId => {
-                    const otherActiveIds = activeIds.filter(id => id !== deletedId);
-                    const isInOtherActive = updated.some((g, idx) => idx !== index && otherActiveIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
-                    if (!isInOtherActive) {
-                        SettingsData.updateDesktopWidgetInstanceConfig(wId, {
-                            showOnOverlay: false,
-                            showOnOverview: false,
-                            showOnOverviewOnly: false,
-                            clickThrough: false
-                        });
-                        if (loadValue("hideWhenInactive", false)) {
-                            SettingsData.updateDesktopWidgetInstance(wId, {
-                                enabled: false
-                            });
-                        }
-                    }
-                });
-            }
             activeIds = activeIds.filter(id => id !== deletedId);
             saveValue("activeGroupIds", activeIds);
             saveValue("activeGroupId", activeIds.length > 0 ? activeIds[0] : "");
@@ -124,26 +114,14 @@ PluginSettings {
         }
         updated[groupIndex].widgets = widgetList;
         saveGroups(updated);
+    }
 
-        const activeIds = loadValue("activeGroupIds", []);
-        if (activeIds.includes(updated[groupIndex].id)) {
-            if (!isChecked) {
-                const isInOtherActive = updated.some((g, idx) => idx !== groupIndex && activeIds.includes(g.id) && g.widgets && g.widgets.includes(widgetId));
-                if (!isInOtherActive) {
-                    SettingsData.updateDesktopWidgetInstanceConfig(widgetId, {
-                        showOnOverlay: false,
-                        showOnOverview: false,
-                        showOnOverviewOnly: false,
-                        clickThrough: false
-                    });
-                    if (loadValue("hideWhenInactive", false)) {
-                        SettingsData.updateDesktopWidgetInstance(widgetId, {
-                            enabled: false
-                        });
-                    }
-                }
-            }
-        }
+    function updateWidgetOverride(groupIndex, widgetId, key, value) {
+        let updated = JSON.parse(JSON.stringify(groups));
+        if (!updated[groupIndex].widgetOverrides) updated[groupIndex].widgetOverrides = {};
+        if (!updated[groupIndex].widgetOverrides[widgetId]) updated[groupIndex].widgetOverrides[widgetId] = {};
+        updated[groupIndex].widgetOverrides[widgetId][key] = value;
+        saveGroups(updated);
     }
 
     SettingsCard {
@@ -181,177 +159,276 @@ PluginSettings {
 
             visible: currentGroup !== null
 
-            Row {
+            DankTabBar {
+                id: subTabBar
+                width: parent.width
+                tabHeight: 40
+                spacing: Theme.spacingM
+                model: rootSettings.subTabModel
+                currentIndex: rootSettings.selectedGroupSubTabIndex
+                equalWidthTabs: true
+                showIcons: true
+
+                onTabClicked: index => {
+                    rootSettings.selectedGroupSubTabIndex = index;
+                }
+            }
+
+            // ── Sub-Tab 1: Group Settings ────────────────────────────────────
+            Column {
                 width: parent.width
                 spacing: Theme.spacingM
+                visible: rootSettings.selectedGroupSubTabIndex === 0
 
-                Column {
-                    width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.6
-                    spacing: Theme.spacingXS
-                    anchors.bottom: parent.bottom
+                Row {
+                    width: parent.width
+                    spacing: Theme.spacingM
 
-                    StyledText {
-                        text: I18n.tr("Group Name")
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.surfaceVariantText
-                    }
+                    Column {
+                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.6
+                        spacing: Theme.spacingXS
+                        anchors.bottom: parent.bottom
 
-                    DankTextField {
-                        width: parent.width
-                        height: 40
-                        text: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.name || "") : ""
-                        placeholderText: I18n.tr("e.g. Work Widgets")
-                        onEditingFinished: {
-                            if (activeGroupDetails.currentGroup) {
-                                rootSettings.renameGroup(rootSettings.selectedGroupIndex, text.trim());
+                        StyledText {
+                            text: I18n.tr("Group Name")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                        }
+
+                        DankTextField {
+                            width: parent.width
+                            height: 40
+                            text: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.name || "") : ""
+                            placeholderText: I18n.tr("e.g. Work Widgets")
+                            onEditingFinished: {
+                                if (activeGroupDetails.currentGroup) {
+                                    rootSettings.renameGroup(rootSettings.selectedGroupIndex, text.trim());
+                                }
                             }
                         }
                     }
-                }
 
-                Column {
-                    width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.4
-                    spacing: Theme.spacingXS
-                    anchors.bottom: parent.bottom
+                    Column {
+                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.4
+                        spacing: Theme.spacingXS
+                        anchors.bottom: parent.bottom
 
-                    StyledText {
-                        text: I18n.tr("Icon")
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.surfaceVariantText
-                    }
+                        StyledText {
+                            text: I18n.tr("Icon")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                        }
 
-                    DankIconPicker {
-                        width: parent.width
-                        height: 40
-                        currentIcon: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.icon || "widgets") : "widgets"
-                        onIconSelected: (iconName, type) => {
-                            if (activeGroupDetails.currentGroup) {
-                                rootSettings.changeGroupIcon(rootSettings.selectedGroupIndex, iconName);
+                        DankIconPicker {
+                            width: parent.width
+                            height: 40
+                            currentIcon: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.icon || "widgets") : "widgets"
+                            onIconSelected: (iconName, type) => {
+                                if (activeGroupDetails.currentGroup) {
+                                    rootSettings.changeGroupIcon(rootSettings.selectedGroupIndex, iconName);
+                                }
                             }
                         }
                     }
-                }
 
-                DankButton {
-                    id: deleteBtn
-                    text: I18n.tr("Delete")
-                    iconName: "delete"
-                    backgroundColor: Theme.error
-                    textColor: Theme.onError
-                    buttonHeight: 40
-                    enabled: rootSettings.groups.length > 1
-                    anchors.bottom: parent.bottom
-                    onClicked: {
-                        rootSettings.deleteGroup(rootSettings.selectedGroupIndex);
-                    }
-                }
-            }
-
-            Separator {}
-
-            Column {
-                width: parent.width
-                spacing: Theme.spacingXS
-                leftPadding: Theme.spacingM
-
-                StyledText {
-                    text: I18n.tr("Group Control Options")
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.weight: Font.Medium
-                    color: Theme.surfaceText
-                }
-
-                DankToggle {
-                    width: parent.width
-                    text: I18n.tr("Show on Overlay")
-                    description: I18n.tr("Show widgets in this group in the desktop overlay layer")
-                    checked: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.toggleOverlay !== false) : true
-                    onToggled: isChecked => {
-                        if (activeGroupDetails.currentGroup) {
-                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverlay", isChecked);
+                    DankButton {
+                        id: deleteBtn
+                        text: I18n.tr("Delete")
+                        iconName: "delete"
+                        backgroundColor: Theme.error
+                        textColor: Theme.onError
+                        buttonHeight: 40
+                        enabled: rootSettings.groups.length > 1
+                        anchors.bottom: parent.bottom
+                        onClicked: {
+                            rootSettings.deleteGroup(rootSettings.selectedGroupIndex);
                         }
                     }
                 }
 
-                DankToggle {
-                    visible: CompositorService.isNiri
+                Separator {}
+
+                Column {
                     width: parent.width
-                    text: I18n.tr("Show on Overview")
-                    description: I18n.tr("Show widgets in this group during workspace overview")
-                    checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleOverview : false
-                    onToggled: isChecked => {
-                        if (activeGroupDetails.currentGroup) {
-                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverview", isChecked);
-                        }
+                    spacing: Theme.spacingXS
+                    leftPadding: Theme.spacingM
+
+                    StyledText {
+                        text: I18n.tr("Global Behavior")
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.weight: Font.Medium
+                        color: Theme.surfaceText
                     }
-                }
 
-                DankToggle {
-                    visible: CompositorService.isNiri
-                    width: parent.width
-                    text: I18n.tr("Show on Overview Only")
-                    description: I18n.tr("Show widgets in this group only during workspace overview")
-                    checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleOverviewOnly : false
-                    onToggled: isChecked => {
-                        if (activeGroupDetails.currentGroup) {
-                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverviewOnly", isChecked);
-                        }
-                    }
-                }
-
-                DankToggle {
-                    width: parent.width
-                    text: I18n.tr("Click Through")
-                    description: I18n.tr("Allow clicks to pass through widgets in this group")
-                    checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleClickThrough : false
-                    onToggled: isChecked => {
-                        if (activeGroupDetails.currentGroup) {
-                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleClickThrough", isChecked);
-                        }
-                    }
-                }
-            }
-
-            Separator {}
-
-            Column {
-                width: parent.width
-                spacing: Theme.spacingXS
-                leftPadding: Theme.spacingM
-
-                StyledText {
-                    text: I18n.tr("Select Widgets")
-                    font.pixelSize: Theme.fontSizeSmall
-                    font.weight: Font.Medium
-                    color: Theme.surfaceText
-                }
-
-                StyledText {
-                    text: I18n.tr("No desktop widgets found. Go to Desktop Widgets tab to create some.")
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.surfaceVariantText
-                    visible: (SettingsData.desktopWidgetInstances || []).length === 0
-                }
-
-                Repeater {
-                    model: SettingsData.desktopWidgetInstances || []
-
-                    delegate: DankToggle {
-                        required property var modelData
+                    DankToggle {
                         width: parent.width
-                        text: modelData.name || modelData.widgetType
-                        description: "Type: " + modelData.widgetType + " | ID: " + modelData.id
-                        checked: {
-                            if (!activeGroupDetails.currentGroup)
-                                return false;
-                            const widgetList = activeGroupDetails.currentGroup.widgets || [];
-                            return widgetList.includes(modelData.id);
-                        }
+                        text: I18n.tr("Show on Overlay")
+                        description: I18n.tr("Show widgets in this group in the desktop overlay layer")
+                        checked: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.toggleOverlay !== false) : true
                         onToggled: isChecked => {
                             if (activeGroupDetails.currentGroup) {
-                                rootSettings.toggleWidgetInGroup(rootSettings.selectedGroupIndex, modelData.id, isChecked);
+                                rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverlay", isChecked);
                             }
                         }
+                    }
+
+                    DankToggle {
+                        visible: CompositorService.isNiri
+                        width: parent.width
+                        text: I18n.tr("Show on Overview")
+                        description: I18n.tr("Show widgets in this group during workspace overview")
+                        checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleOverview : false
+                        onToggled: isChecked => {
+                            if (activeGroupDetails.currentGroup) {
+                                rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverview", isChecked);
+                            }
+                        }
+                    }
+
+                    DankToggle {
+                        visible: CompositorService.isNiri
+                        width: parent.width
+                        text: I18n.tr("Show on Overview Only")
+                        description: I18n.tr("Show widgets in this group only during workspace overview")
+                        checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleOverviewOnly : false
+                        onToggled: isChecked => {
+                            if (activeGroupDetails.currentGroup) {
+                                rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverviewOnly", isChecked);
+                            }
+                        }
+                    }
+
+                    DankToggle {
+                        width: parent.width
+                        text: I18n.tr("Click Through")
+                        description: I18n.tr("Allow clicks to pass through widgets in this group")
+                        checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleClickThrough : false
+                        onToggled: isChecked => {
+                            if (activeGroupDetails.currentGroup) {
+                                rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleClickThrough", isChecked);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Sub-Tab 2: Widget Settings ───────────────────────────────────
+            Column {
+                width: parent.width
+                spacing: Theme.spacingM
+                visible: rootSettings.selectedGroupSubTabIndex === 1
+
+                DankToggle {
+                    width: parent.width
+                    text: I18n.tr("Individual Widget Behavior")
+                    description: I18n.tr("Configure behavior for each widget separately instead of using group-wide settings.")
+                    checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.overrideIndividual : false
+                    onToggled: isChecked => {
+                        if (activeGroupDetails.currentGroup) {
+                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "overrideIndividual", isChecked);
+                        }
+                    }
+                }
+
+                Separator {}
+
+                Column {
+                    width: parent.width
+                    spacing: Theme.spacingS
+                    leftPadding: Theme.spacingM
+
+                    StyledText {
+                        text: I18n.tr("Select Widgets")
+                        font.pixelSize: Theme.fontSizeSmall
+                        font.weight: Font.Medium
+                        color: Theme.surfaceText
+                    }
+
+                    Repeater {
+                        model: SettingsData.desktopWidgetInstances || []
+
+                        delegate: Column {
+                            id: widgetItem
+                            required property var modelData
+                            width: parent.width
+                            spacing: Theme.spacingS
+
+                            readonly property bool isSelected: {
+                                if (!activeGroupDetails.currentGroup) return false;
+                                return (activeGroupDetails.currentGroup.widgets || []).includes(modelData.id);
+                            }
+
+                            DankToggle {
+                                width: parent.width
+                                text: modelData.name || modelData.widgetType
+                                description: "Type: " + modelData.widgetType
+                                checked: widgetItem.isSelected
+                                onToggled: isChecked => {
+                                    rootSettings.toggleWidgetInGroup(rootSettings.selectedGroupIndex, modelData.id, isChecked);
+                                }
+                            }
+
+                            // ── Individual Overrides Selection Bar ───────────
+                            Row {
+                                id: behaviorBar
+                                width: parent.width - Theme.spacingXL - Theme.spacingM
+                                x: Theme.spacingXL
+                                visible: widgetItem.isSelected && activeGroupDetails.currentGroup.overrideIndividual
+                                spacing: Theme.spacingXS
+
+                                property var overrides: (activeGroupDetails.currentGroup.widgetOverrides && activeGroupDetails.currentGroup.widgetOverrides[widgetItem.modelData.id]) || {}
+
+                                Repeater {
+                                    model: [
+                                        { key: "toggleOverlay", label: I18n.tr("Overlay") },
+                                        { key: "toggleOverview", label: I18n.tr("Overview"), visible: CompositorService.isNiri },
+                                        { key: "toggleClickThrough", label: I18n.tr("Click through") }
+                                    ].filter(m => m.visible !== false)
+
+                                    delegate: StyledRect {
+                                        required property var modelData
+                                        visible: modelData.visible !== false
+                                        width: (parent.width - (parent.spacing * (CompositorService.isNiri ? 2 : 1))) / (CompositorService.isNiri ? 3 : 2)
+                                        height: 32
+                                        radius: 4
+                                        
+                                        readonly property bool active: {
+                                            if (modelData.key === "toggleOverlay") return behaviorBar.overrides.toggleOverlay !== false;
+                                            return !!behaviorBar.overrides[modelData.key];
+                                        }
+
+                                        color: active ? Theme.withAlpha(Theme.primary, 0.15) : Theme.surfaceContainerHigh
+                                        border.color: active ? Theme.primary : "transparent"
+                                        border.width: 1
+
+                                        StyledText {
+                                            anchors.centerIn: parent
+                                            text: modelData.label
+                                            font.pixelSize: 11
+                                            color: parent.active ? Theme.primary : Theme.surfaceVariantText
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                const currentVal = (modelData.key === "toggleOverlay") ? (behaviorBar.overrides.toggleOverlay !== false) : !!behaviorBar.overrides[modelData.key];
+                                                rootSettings.updateWidgetOverride(rootSettings.selectedGroupIndex, widgetItem.modelData.id, modelData.key, !currentVal);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Item { width: 1; height: Theme.spacingXS; visible: widgetItem.isSelected && activeGroupDetails.currentGroup.overrideIndividual }
+                        }
+                    }
+
+                    StyledText {
+                        text: I18n.tr("No desktop widgets found.")
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.surfaceVariantText
+                        visible: (SettingsData.desktopWidgetInstances || []).length === 0
                     }
                 }
             }
@@ -404,6 +481,23 @@ PluginSettings {
                 { "value": "overlap", "label": I18n.tr("Block Overlap") },
                 { "value": "all", "label": I18n.tr("Allow All") }
             ]
+        }
+
+        StyledText {
+            width: parent.width
+            text: {
+                switch (conflictModeSetting.value) {
+                    case "single": return I18n.tr("Only one group can be active at a time.");
+                    case "overlap": return I18n.tr("Allow multiple groups if they don't share widgets.");
+                    case "all": return I18n.tr("No restrictions, multiple groups can be active.");
+                    default: return "";
+                }
+            }
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.surfaceVariantText
+            wrapMode: Text.Wrap
+            leftPadding: Theme.spacingM
+            rightPadding: Theme.spacingM
         }
 
         SettingsDivider {}
