@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import "./dms-common"
 import QtQuick
-import QtQuick.Controls
 import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
