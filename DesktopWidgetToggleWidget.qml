@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
+import qs.Services
 
 PluginComponent {
     id: rootWidget
@@ -57,6 +58,9 @@ PluginComponent {
     property int autoDismissDuration: pluginData.autoDismissDuration ?? 0
 
     readonly property bool isDaemonInstance: rootWidget.parent !== null
+
+    pluginId: "desktopWidgetToggle"
+    pluginService: PluginService
 
     onGroupsChanged: updateAllWidgetsState(activeGroupIds)
     onActiveGroupIdsChanged: updateAllWidgetsState(activeGroupIds)
