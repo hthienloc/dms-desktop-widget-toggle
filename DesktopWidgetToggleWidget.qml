@@ -187,6 +187,7 @@ PluginComponent {
                                 size: Theme.barIconSize(rootWidget.barThickness, -4, rootWidget.barConfig?.maximizeWidgetIcons, rootWidget.barConfig?.iconScale)
                                 color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
                                 anchors.verticalCenter: parent.verticalCenter
+                                Behavior on color { enabled: false }
                             }
 
                             StyledText {
@@ -253,6 +254,7 @@ PluginComponent {
                             size: Theme.barIconSize(rootWidget.barThickness, -4, rootWidget.barConfig?.maximizeWidgetIcons, rootWidget.barConfig?.iconScale)
                             color: btn.isActive ? Theme.onPrimary : Theme.surfaceText
                             anchors.centerIn: parent
+                            Behavior on color { enabled: false }
                         }
 
                         MouseArea {

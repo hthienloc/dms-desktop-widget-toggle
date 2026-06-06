@@ -29,17 +29,13 @@ Item {
 
     function loadValue() {
         const settings = findSettings();
-        if (settings) {
-            const pluginId = settings.pluginId;
-            if (pluginId && typeof SettingsData !== "undefined") {
-                value = SettingsData.getPluginSetting(pluginId, settingKey, defaultValue);
-            } else if (settings.pluginService) {
-                value = settings.loadValue(settingKey, defaultValue);
-            }
+        if (settings && settings.pluginService) {
+            value = settings.loadValue(settingKey, defaultValue);
+            isInitialized = true;
         }
     }
 
-    Component.onCompleted: loadValue()
+    Component.onCompleted: Qt.callLater(loadValue)
 
     readonly property var optionLabels: {
         const labels = []
