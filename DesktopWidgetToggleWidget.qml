@@ -300,4 +300,45 @@ PluginComponent {
             }
         }
     }
+
+    IpcHandler {
+        target: "desktopWidgetToggle"
+
+        function toggleGroup(groupId: string): string {
+            if (!groupId) return "ERROR: No group ID provided";
+            const group = groups.find(g => g.id === groupId || g.name.toLowerCase() === groupId.toLowerCase());
+            if (!group) return `ERROR: Group not found: ${groupId}`;
+            rootWidget.toggleGroup(group.id);
+            const isActive = rootWidget.activeGroupIds.includes(group.id);
+            return isActive ? `GROUP_ACTIVATED: ${group.name}` : `GROUP_DEACTIVATED: ${group.name}`;
+        }
+
+        function toggle(groupId: string): string {
+            return toggleGroup(groupId);
+        }
+
+        function activate(groupId: string): string {
+            if (!groupId) return "ERROR: No group ID provided";
+            const group = groups.find(g => g.id === groupId || g.name.toLowerCase() === groupId.toLowerCase());
+            if (!group) return `ERROR: Group not found: ${groupId}`;
+            if (!rootWidget.activeGroupIds.includes(group.id)) {
+                rootWidget.toggleGroup(group.id);
+            }
+            return `GROUP_ACTIVATED: ${group.name}`;
+        }
+
+        function deactivate(groupId: string): string {
+            if (!groupId) return "ERROR: No group ID provided";
+            const group = groups.find(g => g.id === groupId || g.name.toLowerCase() === groupId.toLowerCase());
+            if (!group) return `ERROR: Group not found: ${groupId}`;
+            if (rootWidget.activeGroupIds.includes(group.id)) {
+                rootWidget.toggleGroup(group.id);
+            }
+            return `GROUP_DEACTIVATED: ${group.name}`;
+        }
+
+        function list(): string {
+            return groups.map(g => `${g.id} : ${g.name} (${rootWidget.activeGroupIds.includes(g.id) ? "active" : "inactive"})`).join("\n");
+        }
+    }
 }

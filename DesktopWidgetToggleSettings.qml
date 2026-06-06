@@ -355,6 +355,26 @@ PluginSettings {
                     }
                 }
             }
+
+            Separator {}
+
+            Column {
+                width: parent.width
+                spacing: Theme.spacingXS
+                leftPadding: Theme.spacingM
+
+                StyledText {
+                    text: I18n.tr("IPC Command")
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Medium
+                    color: Theme.surfaceText
+                }
+
+                CopyBox {
+                    width: parent.width
+                    text: "dms ipc call desktopWidgetToggle toggle \"" + (activeGroupDetails.currentGroup ? activeGroupDetails.currentGroup.id : "") + "\""
+                }
+            }
         }
     }
 
@@ -386,6 +406,8 @@ PluginSettings {
             ]
         }
 
+        SettingsDivider {}
+
         SliderSettingPlus {
             id: autoDismissDuration
             settingKey: "autoDismissDuration"
@@ -399,6 +421,8 @@ PluginSettings {
             rightLabel: "15s"
         }
 
+        SettingsDivider {}
+
         ToggleSettingPlus {
             id: hideWhenInactiveSetting
             settingKey: "hideWhenInactive"
@@ -406,6 +430,8 @@ PluginSettings {
             description: I18n.tr("Hide the widgets in inactive groups entirely from the desktop, showing them only when their group is activated.")
             defaultValue: false
         }
+
+        SettingsDivider {}
 
         ToggleSettingPlus {
             id: showIconsSetting
