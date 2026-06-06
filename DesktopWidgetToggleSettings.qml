@@ -246,7 +246,7 @@ PluginSettings {
                     spacing: Theme.spacingM
 
                     Column {
-                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.55
+                        width: parent.width - deleteBtn.width - 88 - Theme.spacingM * 2
                         spacing: Theme.spacingXS
                         anchors.bottom: parent.bottom
 
@@ -270,53 +270,43 @@ PluginSettings {
                     }
 
                     Column {
-                        width: (parent.width - deleteBtn.width - Theme.spacingM * 2) * 0.45
+                        width: 88
                         spacing: Theme.spacingXS
                         anchors.bottom: parent.bottom
+
+                        StyledText {
+                            text: I18n.tr("Icon")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                        }
 
                         Row {
                             width: parent.width
                             spacing: Theme.spacingS
 
-                            Column {
-                                width: parent.width - 48
-                                spacing: Theme.spacingXS
-
-                                StyledText {
-                                    text: I18n.tr("Icon")
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: Theme.surfaceVariantText
-                                }
-
-                                DankIconPicker {
-                                    width: parent.width
-                                    height: 40
-                                    enabled: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.showIcon !== false) : true
-                                    currentIcon: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.icon || "widgets") : "widgets"
-                                    onIconSelected: (iconName, type) => {
-                                        if (activeGroupDetails.currentGroup) {
-                                            rootSettings.changeGroupIcon(rootSettings.selectedGroupIndex, iconName);
-                                        }
+                            DankIconPicker {
+                                width: 40
+                                height: 40
+                                showText: false
+                                enabled: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.showIcon !== false) : true
+                                currentIcon: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.icon || "widgets") : "widgets"
+                                onIconSelected: (iconName, type) => {
+                                    if (activeGroupDetails.currentGroup) {
+                                        rootSettings.changeGroupIcon(rootSettings.selectedGroupIndex, iconName);
                                     }
                                 }
                             }
 
-                            Column {
+                            DankButton {
                                 width: 40
-                                spacing: Theme.spacingXS
-                                anchors.bottom: parent.bottom
-
-                                DankButton {
-                                    width: 40
-                                    height: 40
-                                    iconName: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? "visibility" : "visibility_off"
-                                    backgroundColor: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? Theme.primaryContainer : Theme.surfaceContainerHigh
-                                    textColor: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? Theme.primary : Theme.surfaceVariantText
-                                    onClicked: {
-                                        if (activeGroupDetails.currentGroup) {
-                                            const show = activeGroupDetails.currentGroup.showIcon !== false;
-                                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "showIcon", !show);
-                                        }
+                                height: 40
+                                iconName: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? "visibility" : "visibility_off"
+                                backgroundColor: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? Theme.primaryContainer : Theme.surfaceContainerHigh
+                                textColor: (activeGroupDetails.currentGroup && activeGroupDetails.currentGroup.showIcon !== false) ? Theme.primary : Theme.surfaceVariantText
+                                onClicked: {
+                                    if (activeGroupDetails.currentGroup) {
+                                        const show = activeGroupDetails.currentGroup.showIcon !== false;
+                                        rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "showIcon", !show);
                                     }
                                 }
                             }
