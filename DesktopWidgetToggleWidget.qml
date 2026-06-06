@@ -28,6 +28,13 @@ PluginComponent {
         });
     }
 
+    onGroupsChanged: updateAllWidgetsState(activeGroupIds)
+    onActiveGroupIdsChanged: updateAllWidgetsState(activeGroupIds)
+
+    Component.onCompleted: {
+        updateAllWidgetsState(activeGroupIds)
+    }
+
     Timer {
         id: dismissTimer
         interval: rootWidget.autoDismissDuration * 1000
@@ -120,17 +127,28 @@ PluginComponent {
     function updateAllWidgetsState(activeIds) {
         const allWidgetIds = getAllGroupWidgetIds();
         allWidgetIds.forEach(wId => {
-            const isWidgetActive = groups.some(g => activeIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
-            if (isWidgetActive) {
+            const activeGroupsWithWidget = groups.filter(g => activeIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
+            if (activeGroupsWithWidget.length > 0) {
                 SettingsData.updateDesktopWidgetInstance(wId, {
                     enabled: true
                 });
+                const showOnOverlayVal = activeGroupsWithWidget.some(g => g.toggleOverlay !== false);
+                const showOnOverviewVal = activeGroupsWithWidget.some(g => !!g.toggleOverview);
+                const showOnOverviewOnlyVal = activeGroupsWithWidget.some(g => !!g.toggleOverviewOnly);
+                const clickThroughVal = activeGroupsWithWidget.some(g => !!g.toggleClickThrough);
+
                 SettingsData.updateDesktopWidgetInstanceConfig(wId, {
-                    showOnOverlay: true
+                    showOnOverlay: showOnOverlayVal,
+                    showOnOverview: showOnOverviewVal,
+                    showOnOverviewOnly: showOnOverviewOnlyVal,
+                    clickThrough: clickThroughVal
                 });
             } else {
                 SettingsData.updateDesktopWidgetInstanceConfig(wId, {
-                    showOnOverlay: false
+                    showOnOverlay: false,
+                    showOnOverview: false,
+                    showOnOverviewOnly: false,
+                    clickThrough: false
                 });
                 if (rootWidget.hideWhenInactive) {
                     SettingsData.updateDesktopWidgetInstance(wId, {

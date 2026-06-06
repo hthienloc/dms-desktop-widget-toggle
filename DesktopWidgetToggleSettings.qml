@@ -52,6 +52,12 @@ PluginSettings {
         saveGroups(updated);
     }
 
+    function updateGroupControl(index, key, value) {
+        let updated = JSON.parse(JSON.stringify(groups));
+        updated[index][key] = value;
+        saveGroups(updated);
+    }
+
     function addGroup() {
         let updated = JSON.parse(JSON.stringify(groups));
         const newId = "g_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
@@ -80,8 +86,16 @@ PluginSettings {
                     const isInOtherActive = updated.some((g, idx) => idx !== index && otherActiveIds.includes(g.id) && g.widgets && g.widgets.includes(wId));
                     if (!isInOtherActive) {
                         SettingsData.updateDesktopWidgetInstanceConfig(wId, {
-                            showOnOverlay: false
+                            showOnOverlay: false,
+                            showOnOverview: false,
+                            showOnOverviewOnly: false,
+                            clickThrough: false
                         });
+                        if (loadValue("hideWhenInactive", false)) {
+                            SettingsData.updateDesktopWidgetInstance(wId, {
+                                enabled: false
+                            });
+                        }
                     }
                 });
             }
@@ -113,13 +127,22 @@ PluginSettings {
 
         const activeIds = loadValue("activeGroupIds", []);
         if (activeIds.includes(updated[groupIndex].id)) {
-            let shouldShow = isChecked;
             if (!isChecked) {
-                shouldShow = updated.some((g, idx) => idx !== groupIndex && activeIds.includes(g.id) && g.widgets && g.widgets.includes(widgetId));
+                const isInOtherActive = updated.some((g, idx) => idx !== groupIndex && activeIds.includes(g.id) && g.widgets && g.widgets.includes(widgetId));
+                if (!isInOtherActive) {
+                    SettingsData.updateDesktopWidgetInstanceConfig(widgetId, {
+                        showOnOverlay: false,
+                        showOnOverview: false,
+                        showOnOverviewOnly: false,
+                        clickThrough: false
+                    });
+                    if (loadValue("hideWhenInactive", false)) {
+                        SettingsData.updateDesktopWidgetInstance(widgetId, {
+                            enabled: false
+                        });
+                    }
+                }
             }
-            SettingsData.updateDesktopWidgetInstanceConfig(widgetId, {
-                showOnOverlay: shouldShow
-            });
         }
     }
 
@@ -220,6 +243,71 @@ PluginSettings {
                     anchors.bottom: parent.bottom
                     onClicked: {
                         rootSettings.deleteGroup(rootSettings.selectedGroupIndex);
+                    }
+                }
+            }
+
+            Separator {}
+
+            Column {
+                width: parent.width
+                spacing: Theme.spacingXS
+                leftPadding: Theme.spacingM
+
+                StyledText {
+                    text: I18n.tr("Group Control Options")
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Medium
+                    color: Theme.surfaceText
+                }
+
+                DankToggle {
+                    width: parent.width
+                    text: I18n.tr("Show on Overlay")
+                    description: I18n.tr("Show widgets in this group in the desktop overlay layer")
+                    checked: activeGroupDetails.currentGroup ? (activeGroupDetails.currentGroup.toggleOverlay !== false) : true
+                    onToggled: isChecked => {
+                        if (activeGroupDetails.currentGroup) {
+                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverlay", isChecked);
+                        }
+                    }
+                }
+
+                DankToggle {
+                    visible: CompositorService.isNiri
+                    width: parent.width
+                    text: I18n.tr("Show on Overview")
+                    description: I18n.tr("Show widgets in this group during workspace overview")
+                    checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleOverview : false
+                    onToggled: isChecked => {
+                        if (activeGroupDetails.currentGroup) {
+                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverview", isChecked);
+                        }
+                    }
+                }
+
+                DankToggle {
+                    visible: CompositorService.isNiri
+                    width: parent.width
+                    text: I18n.tr("Show on Overview Only")
+                    description: I18n.tr("Show widgets in this group only during workspace overview")
+                    checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleOverviewOnly : false
+                    onToggled: isChecked => {
+                        if (activeGroupDetails.currentGroup) {
+                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleOverviewOnly", isChecked);
+                        }
+                    }
+                }
+
+                DankToggle {
+                    width: parent.width
+                    text: I18n.tr("Click Through")
+                    description: I18n.tr("Allow clicks to pass through widgets in this group")
+                    checked: activeGroupDetails.currentGroup ? !!activeGroupDetails.currentGroup.toggleClickThrough : false
+                    onToggled: isChecked => {
+                        if (activeGroupDetails.currentGroup) {
+                            rootSettings.updateGroupControl(rootSettings.selectedGroupIndex, "toggleClickThrough", isChecked);
+                        }
                     }
                 }
             }
