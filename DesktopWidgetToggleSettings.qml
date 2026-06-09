@@ -414,6 +414,28 @@ PluginSettings {
                             }
                         }
                     }
+
+                    Item { width: 1; height: Theme.spacingS }
+
+                    SliderSettingPlus {
+                        id: autoDismissDuration
+                        settingKey: "autoDismissDuration_" + (activeGroupDetails.currentGroup ? activeGroupDetails.currentGroup.id : "none")
+                        label: I18n.tr("Auto-dismiss Overlay")
+                        description: I18n.tr("Automatically turn off the active overlay group after this duration. Set to 0 to keep active.")
+                        defaultValue: 0
+                        minimum: 0
+                        maximum: 15
+                        unit: "s"
+                        leftLabel: I18n.tr("Off")
+                        rightLabel: "15s"
+
+                        Connections {
+                            target: activeGroupDetails
+                            function onCurrentGroupChanged() {
+                                autoDismissDuration.loadValue();
+                            }
+                        }
+                    }
                 }
             }
 
@@ -604,9 +626,8 @@ PluginSettings {
             id: behaviorTitle
             text: I18n.tr("Behavior")
             icon: "settings"
-            showReset: autoDismissDuration.isDirty || conflictModeSetting.isDirty
+            showReset: conflictModeSetting.isDirty
             onResetClicked: {
-                autoDismissDuration.resetToDefault();
                 conflictModeSetting.resetToDefault();
             }
         }
@@ -639,21 +660,6 @@ PluginSettings {
             wrapMode: Text.Wrap
             leftPadding: Theme.spacingM
             rightPadding: Theme.spacingM
-        }
-
-        SettingsDivider {}
-
-        SliderSettingPlus {
-            id: autoDismissDuration
-            settingKey: "autoDismissDuration"
-            label: I18n.tr("Auto-dismiss Overlay")
-            description: I18n.tr("Automatically turn off the active overlay group after this duration. Set to 0 to keep active.")
-            defaultValue: 0
-            minimum: 0
-            maximum: 15
-            unit: "s"
-            leftLabel: I18n.tr("Off")
-            rightLabel: "15s"
         }
     }
 
