@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Common
+import qs.Services
 import qs.Widgets
 
 Item {
@@ -8,76 +9,60 @@ Item {
     required property string settingKey
     required property string label
     property string description: ""
-    required property var options
-    property string defaultValue: ""
-    property string value: defaultValue
-    property bool isInitialized: false
+    property var defaultValue: Theme.primary
+    property var value: defaultValue
 
     width: parent.width
     implicitHeight: layoutColumn.implicitHeight
     
-    // Dynamic Opacity for disabled state (Original DMS feature)
+    // Dynamic Opacity for disabled state
     opacity: enabled ? 1 : 0.5
     Behavior on opacity { NumberAnimation { duration: Theme.shortDuration } }
 
-    readonly property bool isDirty: String(value) !== String(defaultValue)
+    property bool isInitialized: false
+    readonly property bool isDirty: value.toString() !== defaultValue.toString()
+
+    readonly property color resolvedColor: {
+        if (value === "primary") return Theme.primary;
+        return Qt.color(value);
+    }
 
     function resetToDefault() {
-        console.log(`[SelectionSettingPlus] Resetting ${settingKey}`);
+        console.log(`[ColorSettingPlus] Resetting ${settingKey}`);
         value = defaultValue;
-        dropdown.currentValue = root.valueToLabel[defaultValue] || defaultValue;
     }
 
     function loadValue() {
         const settings = findSettings();
-        if (settings && settings.pluginService) {
-            value = settings.loadValue(settingKey, defaultValue);
-            isInitialized = true;
+        if (settings) {
+            const pluginId = settings.pluginId;
+            if (pluginId && typeof SettingsData !== "undefined") {
+                const loadedValue = SettingsData.getPluginSetting(pluginId, settingKey, defaultValue);
+                value = loadedValue;
+                isInitialized = true;
+            } else if (settings.pluginService) {
+                const loadedValue = settings.loadValue(settingKey, defaultValue);
+                value = loadedValue;
+                isInitialized = true;
+            }
         }
     }
 
-    Component.onCompleted: Qt.callLater(loadValue)
-
-    readonly property var optionLabels: {
-        const labels = []
-        for (let i = 0; i < options.length; i++) {
-            labels.push(options[i].label || options[i])
-        }
-        return labels
-    }
-
-    readonly property var valueToLabel: {
-        const map = {}
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i]
-            if (typeof opt === 'object') map[opt.value] = opt.label
-            else map[opt] = opt
-        }
-        return map
-    }
-
-    readonly property var labelToValue: {
-        const map = {}
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i]
-            if (typeof opt === 'object') map[opt.label] = opt.value
-            else map[opt] = opt
-        }
-        return map
-    }
+    Component.onCompleted: Qt.callLater(loadValue);
 
     onValueChanged: {
-        const settings = findSettings()
-        if (settings) settings.saveValue(settingKey, value)
+        if (!isInitialized) return;
+        const settings = findSettings();
+        if (settings) settings.saveValue(settingKey, value);
     }
 
     function findSettings() {
-        let item = parent
+        let item = parent;
         while (item) {
-            if (item.saveValue !== undefined && item.loadValue !== undefined) return item
-            item = item.parent
+            if (item.saveValue !== undefined && item.loadValue !== undefined) return item;
+            item = item.parent;
         }
-        return null
+        return null;
     }
 
     HoverHandler {
@@ -168,15 +153,51 @@ Item {
             }
         }
 
-        // ── Dropdown (Full Width) ─────────────────────────────────────────────
-        DankDropdown {
-            id: dropdown
+        // ── Color Preview (Full Width + Hex Label) ────────────────────────────
+        Rectangle {
+            id: colorPreview
             width: parent.width
-            compactMode: true
-            currentValue: root.valueToLabel[root.value] || root.value
-            options: root.optionLabels
-            onValueChanged: newValue => {
-                root.value = root.labelToValue[newValue] || newValue
+            height: 32
+            radius: Theme.cornerRadius
+            color: root.resolvedColor
+            border.color: Theme.outlineStrong
+            border.width: 2
+            
+            Behavior on color { ColorAnimation { duration: Theme.shortDuration } }
+
+            Row {
+                anchors.centerIn: parent
+                spacing: Theme.spacingS
+                
+                DankIcon {
+                    name: "palette"
+                    size: 14
+                    color: root.resolvedColor.hslLightness > 0.6 ? "#000000" : "#ffffff"
+                    opacity: 0.7
+                }
+
+                StyledText {
+                    text: root.value === "primary" ? I18n.tr("PRIMARY") : root.value.toString().toUpperCase()
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Bold
+                    isMonospace: true
+                    color: root.resolvedColor.hslLightness > 0.6 ? "#000000" : "#ffffff"
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (typeof PopoutService !== "undefined" && PopoutService && PopoutService.colorPickerModal) {
+                        PopoutService.colorPickerModal.selectedColor = root.resolvedColor;
+                        PopoutService.colorPickerModal.pickerTitle = root.label;
+                        PopoutService.colorPickerModal.onColorSelectedCallback = function (selectedColor) {
+                            root.value = selectedColor.toString();
+                        };
+                        PopoutService.colorPickerModal.show();
+                    }
+                }
             }
         }
 

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Dialogs
 import qs.Common
 import qs.Widgets
 
@@ -8,76 +9,80 @@ Item {
     required property string settingKey
     required property string label
     property string description: ""
-    required property var options
+    property string placeholder: ""
     property string defaultValue: ""
     property string value: defaultValue
-    property bool isInitialized: false
+    
+    // Features
+    property bool isDirectory: false
+    property bool isFile: false
+    property var fileExtensions: ["*"]
 
     width: parent.width
     implicitHeight: layoutColumn.implicitHeight
     
-    // Dynamic Opacity for disabled state (Original DMS feature)
+    // Dynamic Opacity for disabled state
     opacity: enabled ? 1 : 0.5
     Behavior on opacity { NumberAnimation { duration: Theme.shortDuration } }
 
-    readonly property bool isDirty: String(value) !== String(defaultValue)
+    property bool isInitialized: false
+    readonly property bool isDirty: value !== defaultValue
 
     function resetToDefault() {
-        console.log(`[SelectionSettingPlus] Resetting ${settingKey}`);
+        console.log(`[StringSettingPlus] Resetting ${settingKey}`);
         value = defaultValue;
-        dropdown.currentValue = root.valueToLabel[defaultValue] || defaultValue;
+        textField.text = defaultValue;
+    }
+
+    onValueChanged: {
+        if (!isInitialized) return;
+        const settings = findSettings();
+        if (settings) settings.saveValue(settingKey, value);
     }
 
     function loadValue() {
         const settings = findSettings();
-        if (settings && settings.pluginService) {
-            value = settings.loadValue(settingKey, defaultValue);
-            isInitialized = true;
+        if (settings) {
+            const pluginId = settings.pluginId;
+            if (pluginId && typeof SettingsData !== "undefined") {
+                const loadedValue = SettingsData.getPluginSetting(pluginId, settingKey, defaultValue);
+                if (textField.activeFocus && isInitialized) return;
+                value = loadedValue;
+                textField.text = loadedValue;
+                isInitialized = true;
+            } else if (settings.pluginService) {
+                const loadedValue = settings.loadValue(settingKey, defaultValue);
+                if (textField.activeFocus && isInitialized) return;
+                value = loadedValue;
+                textField.text = loadedValue;
+                isInitialized = true;
+            }
         }
     }
 
-    Component.onCompleted: Qt.callLater(loadValue)
+    Component.onCompleted: Qt.callLater(loadValue);
 
-    readonly property var optionLabels: {
-        const labels = []
-        for (let i = 0; i < options.length; i++) {
-            labels.push(options[i].label || options[i])
-        }
-        return labels
-    }
-
-    readonly property var valueToLabel: {
-        const map = {}
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i]
-            if (typeof opt === 'object') map[opt.value] = opt.label
-            else map[opt] = opt
-        }
-        return map
-    }
-
-    readonly property var labelToValue: {
-        const map = {}
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i]
-            if (typeof opt === 'object') map[opt.label] = opt.value
-            else map[opt] = opt
-        }
-        return map
-    }
-
-    onValueChanged: {
-        const settings = findSettings()
-        if (settings) settings.saveValue(settingKey, value)
+    function commit() {
+        if (!isInitialized || textField.text === value) return;
+        value = textField.text;
+        const settings = findSettings();
+        if (settings) settings.saveValue(settingKey, value);
     }
 
     function findSettings() {
-        let item = parent
+        let item = parent;
         while (item) {
-            if (item.saveValue !== undefined && item.loadValue !== undefined) return item
-            item = item.parent
+            if (item.saveValue !== undefined && item.loadValue !== undefined) return item;
+            item = item.parent;
         }
-        return null
+        return null;
+    }
+
+    function _cleanPath(url) {
+        let path = url.toString();
+        if (path.startsWith("file://")) path = path.substring(7);
+        if (path.length > 1 && path.endsWith("/")) path = path.substring(0, path.length - 1);
+        return path;
     }
 
     HoverHandler {
@@ -168,18 +173,48 @@ Item {
             }
         }
 
-        // ── Dropdown (Full Width) ─────────────────────────────────────────────
-        DankDropdown {
-            id: dropdown
+        // ── Input Row (Explicit Width Calculation) ───────────────────────────
+        Row {
             width: parent.width
-            compactMode: true
-            currentValue: root.valueToLabel[root.value] || root.value
-            options: root.optionLabels
-            onValueChanged: newValue => {
-                root.value = root.labelToValue[newValue] || newValue
+            spacing: Theme.spacingS
+
+            DankTextField {
+                id: textField
+                width: parent.width - (pickerBtn.visible ? 42 + Theme.spacingS : 0)
+                placeholderText: root.placeholder
+                onEditingFinished: root.commit()
+                onActiveFocusChanged: if (!activeFocus) root.commit()
+            }
+
+            DankButton {
+                id: pickerBtn
+                visible: root.isDirectory || root.isFile
+                iconName: root.isDirectory ? "folder_open" : "file_open"
+                text: ""
+                width: 42
+                buttonHeight: textField.height
+                backgroundColor: Theme.surfaceContainerHigh
+                textColor: Theme.primary
+                onClicked: {
+                    if (root.isDirectory) folderDialog.open();
+                    else fileDialog.open();
+                }
             }
         }
 
         DankTooltipV2 { id: sharedTooltip }
+
+        FolderDialog {
+            id: folderDialog
+            title: I18n.tr("Select Directory")
+            onAccepted: { textField.text = root._cleanPath(selectedFolder); root.commit(); }
+        }
+        
+        FileDialog {
+            id: fileDialog
+            title: I18n.tr("Select File")
+            nameFilters: root.fileExtensions
+            onAccepted: { textField.text = root._cleanPath(selectedFile); root.commit(); }
+        }
     }
 }

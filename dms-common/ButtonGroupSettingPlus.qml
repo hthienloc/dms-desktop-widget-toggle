@@ -10,8 +10,7 @@ Item {
     property string description: ""
     required property var options
     property string defaultValue: ""
-    property var value: defaultValue
-    property string selectionMode: "single"
+    property string value: defaultValue
 
     width: parent.width
     implicitHeight: layout.implicitHeight
@@ -20,12 +19,7 @@ Item {
     opacity: enabled ? 1 : 0.5
     Behavior on opacity { NumberAnimation { duration: Theme.shortDuration } }
 
-    readonly property bool isDirty: {
-        if (selectionMode === "multi") {
-            return JSON.stringify(value) !== JSON.stringify(defaultValue);
-        }
-        return String(value) !== String(defaultValue);
-    }
+    readonly property bool isDirty: String(value) !== String(defaultValue)
 
     function resetToDefault() {
         console.log(`[ButtonGroupSettingPlus] Resetting ${settingKey}`);
@@ -176,25 +170,12 @@ Item {
             id: buttonGroup
             width: parent.width
             buttonHeight: 32
-            selectionMode: root.selectionMode
+            selectionMode: "single"
             model: root.optionLabels
-            currentIndex: root.selectionMode === "single" ? (root.valueToIndex[root.value] !== undefined ? root.valueToIndex[root.value] : -1) : -1
-            initialSelection: root.selectionMode === "multi" ? (Array.isArray(root.value) ? root.value.map(v => root.valueToLabel[v]) : []) : []
-
+            currentIndex: root.valueToIndex[root.value] !== undefined ? root.valueToIndex[root.value] : -1
             onSelectionChanged: (index, selected) => {
-                if (root.selectionMode === "single") {
-                    if (selected) {
-                        root.value = root.indexToValue[index]
-                    }
-                } else {
-                    const val = root.indexToValue[index];
-                    let currentVal = Array.isArray(root.value) ? [...root.value] : [];
-                    if (selected) {
-                        if (!currentVal.includes(val)) currentVal.push(val);
-                    } else {
-                        currentVal = currentVal.filter(v => v !== val);
-                    }
-                    root.value = currentVal;
+                if (selected) {
+                    root.value = root.indexToValue[index]
                 }
             }
         }
