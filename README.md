@@ -31,6 +31,13 @@ git clone https://github.com/hthienloc/dms-desktop-widget-toggle ~/.config/DankM
 
 *Note: While a group is active, other group buttons are disabled and visually dimmed to prevent accidental activation.*
 
+## TODO / Roadmap
+
+- [ ] **Scene Awareness:** Auto-toggle groups based on active apps (e.g., hide widgets when gaming).
+- [ ] **Hold to Peek:** Temporarily show widgets only while the button is held.
+- [ ] **Timer Schedules:** Automatically show specific groups at set times of the day.
+- [ ] **Visual Timer:** Add a progress indicator for the auto-dismiss feature.
+
 ## License
 
 GPL-3.0
