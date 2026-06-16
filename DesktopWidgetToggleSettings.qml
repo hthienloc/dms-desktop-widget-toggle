@@ -626,11 +626,26 @@ PluginSettings {
             id: behaviorTitle
             text: I18n.tr("Behavior")
             icon: "settings"
-            showReset: conflictModeSetting.isDirty
+            showReset: conflictModeSetting.isDirty || displayModeSetting.isDirty
             onResetClicked: {
                 conflictModeSetting.resetToDefault();
+                displayModeSetting.resetToDefault();
             }
         }
+
+        ButtonGroupSettingPlus {
+            id: displayModeSetting
+            settingKey: "displayMode"
+            label: I18n.tr("Bar Display Mode")
+            description: I18n.tr("Choose how widget group toggles are displayed on the status bar.")
+            defaultValue: "all"
+            options: [
+                { "value": "all", "label": I18n.tr("Show All Groups") },
+                { "value": "minimal", "label": I18n.tr("Minimal Popout") }
+            ]
+        }
+
+        Separator {}
 
         SelectionSettingPlus {
             id: conflictModeSetting
